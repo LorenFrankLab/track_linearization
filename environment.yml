@@ -1,0 +1,24 @@
+name: package_template
+channels:
+- defaults
+- conda-forge
+dependencies:
+- "python>=3.6"
+- numpy
+- numba
+- scipy
+- scikit-learn
+- matplotlib
+- xarray
+- pandas
+- dask
+- tqdm
+- statsmodels
+- patsy
+- jupyter
+- jupyterlab
+- nb_conda
+- setuptools
+- pytest
+- pytest-cov
+- coveralls
