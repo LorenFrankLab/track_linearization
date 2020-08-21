@@ -3,15 +3,15 @@ Add package description
 
 ### Installation
 ```bash
-pip install package_name
+pip install track_linearization
 ```
 Or
 ```bash
-conda install -c edeno package_name
+conda install -c edeno track_linearization
 ```
 Or
 ```bash
-git clone <package.git>
+git clone https://github.com/LorenFrankLab/track_linearization.git
 python setup.py install
 ```
 
@@ -19,11 +19,11 @@ python setup.py install
 
 ### Developer Installation
 1. Install miniconda (or anaconda) if it isn't already installed.
-2. git clone <package.git>
+2. git clone https://github.com/LorenFrankLab/track_linearization.git
 2. Setup editiable package with dependencies
 ```bash
 cd <package folder>
 conda env create -f environment.yml
-conda activate package_name
+conda activate track_linearization
 python setup.py develop
 ```
