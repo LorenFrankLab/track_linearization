@@ -5,16 +5,11 @@ channels:
 dependencies:
 - "python>=3.6"
 - numpy
-- numba
 - scipy
-- scikit-learn
 - matplotlib
-- xarray
 - pandas
+- networkx
 - dask
-- tqdm
-- statsmodels
-- patsy
 - jupyter
 - jupyterlab
 - nb_conda
