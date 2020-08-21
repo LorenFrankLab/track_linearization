@@ -38,7 +38,7 @@ def plot_track_graph(track_graph, ax=None, draw_edge_labels=False, **kwds):
 
     Parameters
     ----------
-    track_graph : networkx Graph
+    track_graph : networkx.Graph
     ax : matplotlib axis, optional
     draw_edge_labels : bool, optional
         Plots the names of the edges

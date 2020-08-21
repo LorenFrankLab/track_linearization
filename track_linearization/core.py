@@ -511,6 +511,41 @@ def get_linearized_position(position,
                             sensor_std_dev=5.0,
                             diagonal_bias=0.0,
                             ):
+    """Linearize 2D position based on graph representation of track.
+
+    Parameters
+    ----------
+    position : numpy.ndarray, shape (n_time, 2)
+        2D position of the animal.
+    track_graph : networkx.Graph
+        Graph representation of the 2D track.
+    linear_zero_node_id : int or None, optional
+        ID of the node that corresponds to linear position 0.0
+    edge_order : numpy.ndarray, shape (n_edges,), optional
+        Controls order of track segments in 1D position
+    edge_spacing : float or numpy.ndarray, shape (n_edges - 1,), optional
+        Controls the spacing between track segments in 1D position
+    route_euclidean_distance_scaling : float, optional
+        How much to prefer route distances between successive time points
+        that are closer to the euclidean distance. Smaller numbers mean the
+        route distance is more likely to be close to the euclidean distance.
+        This favors less jumps. Larger numbers favor more jumps.
+    sensor_std_dev : float, optional
+        The variability of the sensor used to track position
+    diagonal_bias : float between 0.0 and 1.0, optional
+        Bigger values mean the linear position is more likely to stick to the
+        current track segment.
+
+    Returns
+    -------
+    position_df : pandas.DataFrame, shape (n_time, 5)
+        'linear_position' - linear position of animal based on HMM
+        'track_segment_id' - the edge the animal is on
+        'projected_x_position' - the 2D position projected to the track_graph
+        'projected_y_position' - the 2D position projected to the track_graph
+        'linear_distance' - absolute distance from `linear_zero_node_id`
+
+    """
     # If no edge_order is given, then arange edges in the order passed to
     # construct the track graph
     if edge_order is None:
