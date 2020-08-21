@@ -1,5 +1,5 @@
 # Package Name
-Add package description
+Linearize 2D position to 1D using an HMM 
 
 ### Installation
 ```bash
