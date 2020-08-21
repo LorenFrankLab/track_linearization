@@ -1,5 +1,5 @@
-# Package Name
-Linearize 2D position to 1D using an HMM 
+# track_linearization
+Linearize 2D position to 1D using an HMM
 
 ### Installation
 ```bash
