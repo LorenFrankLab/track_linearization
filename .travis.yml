@@ -13,8 +13,8 @@ install:
   - conda update -q conda
   - conda info -a
   - conda env create -f environment.yml
-  - source activate package_template
+  - source activate track_linearization
   - python setup.py develop
-script: pytest --cov=package_template tests/
+script: pytest --cov=track_linearization tests/
 after_success:
     - coveralls

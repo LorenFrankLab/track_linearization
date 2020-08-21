@@ -1,4 +1,4 @@
-name: package_template
+name: track_linearization
 channels:
 - defaults
 - conda-forge

@@ -7,7 +7,7 @@ INSTALL_REQUIRES = ['numpy', 'numba', 'scipy', 'scikit-learn', 'matplotlib',
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(
-    name='package_template',
+    name='track_linearization',
     version='0.1.0.dev0',
     license='MIT',
     description=(''),
