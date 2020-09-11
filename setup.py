@@ -17,4 +17,5 @@ setup(
     packages=find_packages(),
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRE,
+    python_requires='>=3.6',
 )
