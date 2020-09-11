@@ -361,26 +361,8 @@ def batch_linear_distance(track_graph, projected_track_positions, edge_ids,
     return linear_distance
 
 
-def calculate_linear_distance(track_graph, track_segment_id,
-                              linear_zero_node_id, position):
-    '''Finds the path distance along a graph relative to a node.
-
-    Parameters
-    ----------
-    track_graph : networkx Graph
-    track_segment_id : ndarray, shape (n_time,)
-    linear_zero_node_id : hashable object
-        ID of the node that corresponds to linear position 0.0
-    position : ndarray, shape (n_time, n_spaces)
-
-    Returns
-    -------
-    linear_distance : ndarray, shape (n_time,)
-        Linear distance from well specified by `linear_zero_node_id`
-    projected_track_position_x : ndarray, shape (n_time,)
-    projected_track_position_y : ndarray, shape (n_time,)
-
-    '''
+def _calulcate_linear_position(track_graph, position, track_segment_id,
+                               edge_order, edge_spacing):
     is_nan = np.isnan(track_segment_id)
     track_segment_id[is_nan] = 0  # need to check
     track_segment_id = track_segment_id.astype(int)
@@ -391,125 +373,58 @@ def calculate_linear_distance(track_graph, track_segment_id,
     n_time = projected_track_positions.shape[0]
     projected_track_positions = projected_track_positions[(
         np.arange(n_time), track_segment_id)]
-    edge_ids = np.asarray(list(track_graph.edges))[track_segment_id]
-
-    linear_distance = []
-
-    for time_ind in batch(n_time, batch_size=10_000):
-        linear_distance.append(
-            batch_linear_distance(
-                track_graph, projected_track_positions[time_ind],
-                edge_ids[time_ind], linear_zero_node_id))
-    linear_distance = np.concatenate(dask.compute(
-        *linear_distance, scheduler='processes'))
-    linear_distance[is_nan] = np.nan
-
-    return (linear_distance,
-            projected_track_positions[:, 0],
-            projected_track_positions[:, 1])
-
-
-def convert_linear_distance_to_linear_position(
-        linear_distance, edge_id, edge_order, spacing=30):
-    linear_position = linear_distance.copy()
-    n_edges = len(edge_order)
-    if isinstance(spacing, int) | isinstance(spacing, float):
-        spacing = [spacing, ] * (n_edges - 1)
-
-    for prev_edge, cur_edge, space in zip(
-            edge_order[:-1], edge_order[1:], spacing):
-        is_cur_edge = (edge_id == cur_edge)
-        is_prev_edge = (edge_id == prev_edge)
-
-        cur_distance = linear_position[is_cur_edge]
-        cur_distance -= cur_distance.min()
-        cur_distance += linear_position[is_prev_edge].max() + space
-        linear_position[is_cur_edge] = cur_distance
-
-    return linear_position
-
-
-def get_graph_1D_2D_relationships(track_graph, edge_order, edge_spacing,
-                                  linear_zero_node_id):
-    '''
-
-    Parameters
-    ----------
-    track_graph : networkx.Graph
-    edge_order : array-like, shape (n_edges,)
-    edge_spacing : float or array-like, shape (n_edges,)
-    linear_zero_node_id : int
-
-    Returns
-    -------
-    node_linear_position : numpy.ndarray, shape (n_edges, n_position_dims)
-    edges : numpy.ndarray, shape (n_edges, 2)
-    node_2D_position : numpy.ndarray, shape (n_edges, 2, n_position_dims)
-    edge_dist : numpy.ndarray, shape (n_edges,)
-
-    '''
-    linear_distance = []
-    edge_id = []
-
-    dist = dict(
-        nx.all_pairs_dijkstra_path_length(track_graph, weight="distance")
-    )
-    n_edges = len(track_graph.edges)
-
-    for ind, (node1, node2) in enumerate(track_graph.edges):
-        linear_distance.append(dist[linear_zero_node_id][node1])
-        linear_distance.append(dist[linear_zero_node_id][node2])
-        edge_id.append(ind)
-        edge_id.append(ind)
-
-    linear_distance = np.array(linear_distance)
-    edge_id = np.array(edge_id)
-
-    node_linear_position = convert_linear_distance_to_linear_position(
-        linear_distance, edge_id, edge_order, spacing=edge_spacing
-    )
-
-    node_linear_position = node_linear_position.reshape((n_edges, 2))[
-        edge_order]
-    node_linear_distance = linear_distance.reshape((n_edges, 2))[edge_order]
-
-    return node_linear_position, node_linear_distance
-
-
-def _calulcate_linear_position(linear_distance, edge_id, track_graph,
-                               linear_zero_node_id, edge_order,
-                               edge_spacing=15):
-    '''Calculate linear distance but map the left arm to the
-    range(max_linear_distance, max_linear_distance + max_left_arm_distance).'''
-    linear_position = linear_distance.copy()
-
-    node_linear_position, node_linear_distance = get_graph_1D_2D_relationships(
-        track_graph, edge_order, edge_spacing, linear_zero_node_id)
 
     n_edges = len(edge_order)
     if isinstance(edge_spacing, int) | isinstance(edge_spacing, float):
         edge_spacing = [edge_spacing, ] * (n_edges - 1)
 
-    for start_linear_position, start_linear_distance, cur_edge in zip(
-            node_linear_position[:, 0], node_linear_distance[:, 0],
-            edge_order):
-        is_cur_edge = (edge_id == cur_edge)
+    counter = 0.0
+    start_node_linear_position = []
 
-        cur_distance = linear_distance[is_cur_edge] - start_linear_distance
-        cur_distance += start_linear_position
-        linear_position[is_cur_edge] = cur_distance
+    for ind, edge in enumerate(edge_order):
+        start_node_linear_position.append(counter)
 
-    return linear_position
+        try:
+            counter += track_graph.edges[edge]["distance"] + edge_spacing[ind]
+        except IndexError:
+            pass
+
+    start_node_linear_position = np.asarray(start_node_linear_position)
+
+    track_segment_id_to_start_node_linear_position = {
+        track_graph.edges[e]["edge_id"]: snlp
+        for e, snlp in zip(edge_order, start_node_linear_position)}
+
+    start_node_linear_position = np.asarray([
+        track_segment_id_to_start_node_linear_position[edge_id]
+        for edge_id in track_segment_id
+    ])
+
+    track_segment_id_to_edge = {
+        track_graph.edges[e]["edge_id"]: e for e in edge_order}
+    start_node_id = np.asarray([track_segment_id_to_edge[edge_id][0]
+                                for edge_id in track_segment_id])
+    start_node_2D_position = np.asarray(
+        [track_graph.nodes[node]["pos"] for node in start_node_id])
+
+    linear_position = start_node_linear_position + (
+        np.linalg.norm(start_node_2D_position -
+                       projected_track_positions, axis=1))
+    linear_position[is_nan] = np.nan
+
+    return (linear_position,
+            projected_track_positions[:, 0],
+            projected_track_positions[:, 1])
 
 
 def get_linearized_position(position,
                             track_graph,
-                            linear_zero_node_id=None,
                             edge_order=None,
                             edge_spacing=0,
+                            use_HMM=True,
                             route_euclidean_distance_scaling=1.0,
                             sensor_std_dev=5.0,
-                            diagonal_bias=0.0,
+                            diagonal_bias=0.1,
                             ):
     """Linearize 2D position based on graph representation of track.
 
@@ -519,64 +434,59 @@ def get_linearized_position(position,
         2D position of the animal.
     track_graph : networkx.Graph
         Graph representation of the 2D track.
-    linear_zero_node_id : int or None, optional
-        ID of the node that corresponds to linear position 0.0
-    edge_order : numpy.ndarray, shape (n_edges,), optional
-        Controls order of track segments in 1D position
+    edge_order : numpy.ndarray, shape (n_edges, 2), optional
+        Controls order of track segments in 1D position. Specify as edges as
+        node pairs such as [(node1, node2), (node2, node3)]
     edge_spacing : float or numpy.ndarray, shape (n_edges - 1,), optional
         Controls the spacing between track segments in 1D position
+    use_HMM : bool
+        If True, then uses HMM to classify the edge the animal is on.
+        If False, then finds the closest edge (using euclidean distance).
     route_euclidean_distance_scaling : float, optional
-        How much to prefer route distances between successive time points
-        that are closer to the euclidean distance. Smaller numbers mean the
-        route distance is more likely to be close to the euclidean distance.
-        This favors less jumps. Larger numbers favor more jumps.
+        Used with HMM. How much to prefer route distances between successive
+        time points that are closer to the euclidean distance. Smaller
+        numbers mean the route distance is more likely to be close to the
+        euclidean distance. This favors less jumps. Larger numbers favor
+        more jumps.
     sensor_std_dev : float, optional
-        The variability of the sensor used to track position
+        Used with HMM. The variability of the sensor used to track position
     diagonal_bias : float between 0.0 and 1.0, optional
-        Bigger values mean the linear position is more likely to stick to the
-        current track segment.
+        Used with HMM. Bigger values mean the linear position is more likely
+        to stick to the current track segment.
 
     Returns
     -------
     position_df : pandas.DataFrame, shape (n_time, 5)
-        'linear_position' - linear position of animal based on HMM
+        'linear_position' - linear position of animal
         'track_segment_id' - the edge the animal is on
         'projected_x_position' - the 2D position projected to the track_graph
         'projected_y_position' - the 2D position projected to the track_graph
-        'linear_distance' - absolute distance from `linear_zero_node_id`
 
     """
     # If no edge_order is given, then arange edges in the order passed to
     # construct the track graph
     if edge_order is None:
-        edge_order = np.arange(len(track_graph.edges), dtype=int)
-
-    # If no linear zero node id is given,
-    if linear_zero_node_id is None:
-        linear_zero_node_id = list(track_graph.edges)[0][0]
+        edge_order = list(track_graph.edges)
 
     # Figure out the most probable track segement that correponds to
     # 2D position
-    track_segment_id = classify_track_segments(
-        track_graph, position,
-        route_euclidean_distance_scaling=route_euclidean_distance_scaling,
-        sensor_std_dev=sensor_std_dev,
-        diagonal_bias=diagonal_bias)
+    if use_HMM:
+        track_segment_id = classify_track_segments(
+            track_graph, position,
+            route_euclidean_distance_scaling=route_euclidean_distance_scaling,
+            sensor_std_dev=sensor_std_dev,
+            diagonal_bias=diagonal_bias)
+    else:
+        track_segments = get_track_segments_from_graph(track_graph)
+        track_segment_id = find_nearest_segment(track_segments, position)
 
-    # Calculate the distance from the node at linear position 0.0
-    (linear_distance, projected_x_position,
-     projected_y_position) = calculate_linear_distance(
-        track_graph, track_segment_id, linear_zero_node_id, position)
-
-    # Map the linear distance to segments of 1D space
-    linear_position = _calulcate_linear_position(
-        linear_distance, track_segment_id, track_graph, linear_zero_node_id,
-        edge_order=edge_order, edge_spacing=edge_spacing)
+    (linear_position, projected_x_position,
+     projected_y_position) = _calulcate_linear_position(
+        track_graph, position, track_segment_id, edge_order, edge_spacing)
 
     return pd.DataFrame({
         'linear_position': linear_position,
         'track_segment_id': track_segment_id,
         'projected_x_position': projected_x_position,
         'projected_y_position': projected_y_position,
-        'linear_distance': linear_distance,
     })
