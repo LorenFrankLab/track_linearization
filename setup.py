@@ -3,12 +3,12 @@
 from setuptools import find_packages, setup
 
 INSTALL_REQUIRES = ['numpy', 'scipy', 'matplotlib',
-                    'pandas', 'dask', 'networkx']
+                    'pandas', 'dask', 'networkx', 'numba']
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(
     name='track_linearization',
-    version='2.0.0',
+    version='2.1.0',
     license='MIT',
     description=(''),
     author='',

@@ -2,6 +2,7 @@ from math import sqrt
 
 import dask
 import networkx as nx
+import numba
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -242,6 +243,7 @@ def calculate_empirical_state_transition(position, track_graph,
     return normalize_to_probability(exponential_pdf, axis=2)
 
 
+@numba.njit(cache=True)
 def viterbi(initial_conditions, state_transition, likelihood):
     '''Find the most likely sequence of paths using the Viterbi algorithm.
 
@@ -259,37 +261,37 @@ def viterbi(initial_conditions, state_transition, likelihood):
     state_id : ndarray, shape (n_time,)
 
     '''
-    is_bad = (np.any(np.isnan(likelihood), axis=1) |
-              np.any(np.isinf(np.log(likelihood)), axis=1))
-    log_likelihood = np.log(likelihood.copy()[~is_bad])
-    state_transition = np.log(state_transition.copy()[~is_bad])
+
+    LOG_EPS = 1e-16
+    log_likelihood = np.log(likelihood.copy())
+    state_transition = np.log(state_transition.copy() + LOG_EPS)
 
     n_time, n_states = log_likelihood.shape
     posterior = np.zeros((n_time, n_states))
-    max_state_ind = np.zeros((n_time, n_states), dtype=np.int)
+    max_state_ind = np.zeros((n_time, n_states))
 
     # initialization
-    posterior[0] = np.log(initial_conditions) + log_likelihood[0]
+    posterior[0] = np.log(initial_conditions + LOG_EPS) + log_likelihood[0]
 
     # recursion
     for time_ind in range(1, n_time):
         prior = posterior[time_ind - 1] + state_transition[time_ind]
-        max_state_ind[time_ind] = prior.argmax(axis=1)
-        posterior[time_ind] = prior[np.arange(
-            n_states), max_state_ind[time_ind]] + log_likelihood[time_ind]
+        for state_ind in range(n_states):
+            max_state_ind[time_ind, state_ind] = np.argmax(prior[state_ind])
+            posterior[time_ind, state_ind] = (
+                prior[state_ind, int(max_state_ind[time_ind, state_ind])]
+                + log_likelihood[time_ind, state_ind])
 
     # termination
-    most_probable_state_ind = np.zeros((n_time,), dtype=np.int)
+    most_probable_state_ind = np.zeros((n_time,))
     most_probable_state_ind[n_time - 1] = np.argmax(posterior[n_time - 1])
 
     # path back-tracking
-    for time_ind in reversed(range(n_time - 1)):
+    for time_ind in range(n_time - 2, -1, -1):
         most_probable_state_ind[time_ind] = max_state_ind[
-            time_ind + 1, most_probable_state_ind[time_ind + 1]]
+            time_ind + 1, int(most_probable_state_ind[time_ind + 1])]
 
-    most_probable_state_ind_with_nan = np.full((is_bad.size,), np.nan)
-    most_probable_state_ind_with_nan[~is_bad] = most_probable_state_ind
-    return most_probable_state_ind_with_nan
+    return most_probable_state_ind
 
 
 def classify_track_segments(track_graph, position, sensor_std_dev=10,
@@ -332,8 +334,15 @@ def classify_track_segments(track_graph, position, sensor_std_dev=10,
         diagonal_bias=diagonal_bias)
     likelihood = calculate_position_likelihood(
         position, track_graph, sigma=sensor_std_dev)
-
-    return viterbi(initial_conditions, state_transition, likelihood)
+    is_bad = (np.any(np.isnan(likelihood), axis=1) |
+              np.any(np.isinf(np.log(likelihood)), axis=1))
+    likelihood = likelihood[~is_bad]
+    state_transition = state_transition[~is_bad]
+    track_segment_id = viterbi(
+        initial_conditions, state_transition, likelihood)
+    track_segment_id_with_nan = np.full((is_bad.size,), np.nan)
+    track_segment_id_with_nan[~is_bad] = track_segment_id
+    return track_segment_id_with_nan
 
 
 def batch_linear_distance(track_graph, projected_track_positions, edge_ids,

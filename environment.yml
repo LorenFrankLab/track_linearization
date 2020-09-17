@@ -9,6 +9,7 @@ dependencies:
 - matplotlib
 - pandas
 - networkx
+- numba
 - dask
 - jupyter
 - jupyterlab
