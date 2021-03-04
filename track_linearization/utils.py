@@ -89,8 +89,8 @@ def plot_graph_as_1D(track_graph, edge_order=None, edge_spacing=0,
             ax.scatter(end_node_linear_position, other_axis_start,
                        zorder=8, s=node_size, clip_on=False, color=node_color)
             ax.plot((start_node_linear_position, end_node_linear_position),
-                    (other_axis_start, other_axis_start), color="black",
-                    clip_on=False)
+                    (other_axis_start, other_axis_start),
+                    color="black", clip_on=False, zorder=7)
 
             if draw_edge_labels:
                 edge_midpoint = start_node_linear_position + \
@@ -130,7 +130,7 @@ def plot_graph_as_1D(track_graph, edge_order=None, edge_spacing=0,
                        zorder=8, s=node_size, clip_on=False, color=node_color)
             ax.plot((other_axis_start, other_axis_start),
                     (start_node_linear_position, end_node_linear_position),
-                    color="black")
+                    color="black", clip_on=False, zorder=7)
 
             if draw_edge_labels:
                 edge_midpoint = start_node_linear_position + \
