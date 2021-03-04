@@ -7,7 +7,7 @@ pip install track_linearization
 ```
 Or
 ```bash
-conda install -c edeno track_linearization
+conda install -c franklab track_linearization
 ```
 Or
 ```bash
