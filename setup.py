@@ -3,7 +3,7 @@
 from setuptools import find_packages, setup
 
 INSTALL_REQUIRES = ['numpy', 'scipy', 'matplotlib',
-                    'pandas', 'dask', 'networkx', 'numba']
+                    'pandas', 'dask', 'networkx', 'numba', 'ipympl']
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(

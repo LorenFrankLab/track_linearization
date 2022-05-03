@@ -11,6 +11,7 @@ dependencies:
 - networkx
 - numba
 - dask
+- ipympl
 - jupyter
 - jupyterlab
 - nb_conda
