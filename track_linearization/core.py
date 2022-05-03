@@ -179,8 +179,7 @@ def route_distance_change(position, track_graph):
                 track_graph, projected_track_position_t[time_ind],
                 projected_track_position_t_1[time_ind]))
 
-    return np.concatenate(dask.compute(
-        *distances, scheduler='processes'), axis=0)
+    return np.concatenate(dask.compute(*distances), axis=0)
 
 
 def calculate_position_likelihood(position, track_graph, sigma=10):
