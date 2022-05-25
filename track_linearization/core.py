@@ -27,6 +27,7 @@ def get_track_segments_from_graph(track_graph):
                        for node1, node2 in track_graph.edges()])
 
 
+
 def project_points_to_segment(track_segments, position):
     '''Finds the closet point on a track segment in terms of Euclidean distance
 
@@ -40,6 +41,7 @@ def project_points_to_segment(track_segments, position):
     projected_positions : ndarray, shape (n_time, n_segments, n_space)
 
     '''
+    
     segment_diff = np.diff(track_segments, axis=1).squeeze(axis=1)
     sum_squares = np.sum(segment_diff ** 2, axis=1)
     node1 = track_segments[:, 0, :]
@@ -428,6 +430,7 @@ def _calulcate_linear_position(track_graph, position, track_segment_id,
 def get_linearized_position(position,
                             track_graph,
                             edge_order=None,
+                            edge_specialty=None,
                             edge_spacing=0,
                             use_HMM=False,
                             route_euclidean_distance_scaling=1.0,
@@ -445,6 +448,13 @@ def get_linearized_position(position,
     edge_order : numpy.ndarray, shape (n_edges, 2), optional
         Controls order of track segments in 1D position. Specify as edges as
         node pairs such as [(node1, node2), (node2, node3)]
+    edge_specialty: numpy.ndarry or list, shape (n_edges), optional
+        Entries are {0,1,5}. Allows special edges to replace/lump across other edges.
+        Edges with value 5 is an edge to be replaced by an edge of value 1.
+        In other words, when edge x is detected to be the closest to the position, if it is
+        tagged with value 5, a new calculation that finds the closest location on edge
+        tagged with 1 is done.
+        ONLY AVAILABLE IN NONE-HMM
     edge_spacing : float or numpy.ndarray, shape (n_edges - 1,), optional
         Controls the spacing between track segments in 1D position
     use_HMM : bool
@@ -487,6 +497,10 @@ def get_linearized_position(position,
     else:
         track_segments = get_track_segments_from_graph(track_graph)
         track_segment_id = find_nearest_segment(track_segments, position)
+
+        if edge_specialty is not None: 
+            track_segment_id[np.isin(track_segment_id,np.argwhere(edge_specialty==5).ravel())]=np.argwhere(edge_specialty==1).ravel()
+
 
     (linear_position, projected_x_position,
      projected_y_position) = _calulcate_linear_position(
