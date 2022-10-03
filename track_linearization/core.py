@@ -403,9 +403,26 @@ def batch_linear_distance(
     return linear_distance
 
 
-def _calulcate_linear_position(
+def _calculate_linear_position(
     track_graph, position, track_segment_id, edge_order, edge_spacing
 ):
+    """Determines the linear position given a 2D position and a track graph.
+
+    Parameters
+    ----------
+    track_graph : nx.Graph
+    position : np.ndarray, shape (n_time, n_position_dims)
+    track_segment_id : np.ndarray, shape (n_time,)
+    edge_order : list of 2-tuples
+    edge_spacing : float or list, len n_edges - 1
+
+    Returns
+    -------
+    linear_position : np.ndarray, shape (n_time,)
+    projected_track_positions_x : np.ndarray, shape (n_time,)
+    projected_track_positions_y : np.ndarray, shape (n_time,)
+
+    """
     is_nan = np.isnan(track_segment_id)
     track_segment_id[is_nan] = 0  # need to check
     track_segment_id = track_segment_id.astype(int)
@@ -538,7 +555,7 @@ def get_linearized_position(
         linear_position,
         projected_x_position,
         projected_y_position,
-    ) = _calulcate_linear_position(
+    ) = _calculate_linear_position(
         track_graph, position, track_segment_id, edge_order, edge_spacing
     )
 
