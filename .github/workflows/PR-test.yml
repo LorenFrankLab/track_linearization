@@ -31,3 +31,7 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install -e .
+    - name: Test notebook
+      shell: bash -l {0}
+      run: |
+        jupyter nbconvert --to notebook --ExecutePreprocessor.kernel_name=python3 --execute notebooks/test_linearization.ipynb
