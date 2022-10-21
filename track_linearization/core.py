@@ -492,6 +492,7 @@ def get_linearized_position(
     route_euclidean_distance_scaling=1.0,
     sensor_std_dev=5.0,
     diagonal_bias=0.1,
+    edge_map=None,
 ):
     """Linearize 2D position based on graph representation of track.
 
@@ -520,6 +521,8 @@ def get_linearized_position(
     diagonal_bias : float between 0.0 and 1.0, optional
         Used with HMM. Bigger values mean the linear position is more likely
         to stick to the current track segment.
+    edge_map : None or dict
+        Maps one edge to another before linearization.
 
     Returns
     -------
@@ -548,6 +551,11 @@ def get_linearized_position(
     else:
         track_segments = get_track_segments_from_graph(track_graph)
         track_segment_id = find_nearest_segment(track_segments, position)
+
+    # Allow resassignment of edges
+    if edge_map is not None:
+        for cur_edge, new_edge in edge_map.items():
+            track_segment_id[track_segment_id == cur_edge] = new_edge
 
     (
         linear_position,
