@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-np.warnings.filterwarnings("ignore")
-
 
 def get_track_segments_from_graph(track_graph):
     """
