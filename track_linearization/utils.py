@@ -30,7 +30,7 @@ def make_track_graph(node_positions, edges):
     for node_id, node_position in enumerate(node_positions):
         track_graph.add_node(node_id, pos=tuple(node_position))
 
-    for (node1, node2) in edges:
+    for node1, node2 in edges:
         pos1 = np.asarray(track_graph.nodes[node1]["pos"])
         pos2 = np.asarray(track_graph.nodes[node2]["pos"])
         distance = np.linalg.norm(pos1 - pos2)
@@ -80,7 +80,6 @@ def plot_graph_as_1D(
     node_size=300,
     node_color="#1f77b4",
 ):
-
     if ax is None:
         ax = plt.gca()
     # If no edge_order is given, then arange edges in the order passed to

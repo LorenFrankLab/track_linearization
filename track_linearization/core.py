@@ -374,12 +374,10 @@ def classify_track_segments(
 def batch_linear_distance(
     track_graph, projected_track_positions, edge_ids, linear_zero_node_id
 ):
-
     copy_graph = track_graph.copy()
     linear_distance = []
 
     for (x3, y3), (node1, node2) in zip(projected_track_positions, edge_ids):
-
         x1, y1 = copy_graph.nodes[node1]["pos"]
         left_distance = sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2)
         nx.add_path(copy_graph, [node1, "projected"], distance=left_distance)
