@@ -57,7 +57,10 @@ def plot_track_graph(track_graph, ax=None, draw_edge_labels=False, **kwds):
     if ax is None:
         ax = plt.gca()
     node_position = nx.get_node_attributes(track_graph, "pos")
-    nx.draw_networkx(track_graph, node_position, ax=ax, **kwds)
+    nx.draw_networkx_nodes(track_graph, node_position, ax=ax, **kwds)
+    for node_id1, node_id2 in track_graph.edges:
+        pos = np.stack((node_position[node_id1], node_position[node_id2]))
+        ax.plot(pos[:, 0], pos[:, 1], color="black", zorder=-1)
 
     if draw_edge_labels:
         edge_ids = {edge: ind for ind, edge in enumerate(track_graph.edges)}
