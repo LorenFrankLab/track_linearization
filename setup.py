@@ -16,7 +16,7 @@ TESTS_REQUIRE = ["pytest >= 2.7.1"]
 
 setup(
     name="track_linearization",
-    version="2.3.0",
+    version="2.3.1",
     license="MIT",
     description=(""),
     author="",
