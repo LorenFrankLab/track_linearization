@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -370,3 +372,41 @@ def make_actual_vs_linearized_position_movie(
         fig, _update_plot, frames=n_time, interval=1000 / frame_rate, blit=True
     )
     line_ani.save(movie_name + ".mp4", writer=writer)
+
+
+def get_auto_linear_edge_order_spacing(
+    track_graph: nx.Graph,
+    start_node: object = None,
+    spacing_between_unconnected_components=15.0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Automatically determine the linear edge order and spacing
+    using a depth-first search starting from the `start_node`.
+
+    If adjacent edges are not connected, in the 1D representation
+    of the track graph, then the edges are separated by a fixed spacing.
+
+    Parameters
+    ----------
+    track_graph : nx.Graph
+    start_node : object, optional
+        Start node of , by default None
+    spacing_between_unconnected_components : float, optional
+        Spacing between edges in 1D if not, by default 15.0
+
+    Returns
+    -------
+    linear_edge_order : np.ndarray
+        Linear order of edges
+    linear_edge_spacing : np.ndarray
+        Spacing between edges
+    """
+    linear_edge_order = list(nx.traversal.edge_bfs(track_graph, source=start_node))
+    is_connected_component = ~(
+        np.abs(np.array(linear_edge_order)[:-1, 1] - np.array(linear_edge_order)[1:, 0])
+        > 0
+    )
+    linear_edge_spacing = (
+        ~is_connected_component * spacing_between_unconnected_components
+    )
+
+    return linear_edge_order, linear_edge_spacing
