@@ -2,10 +2,16 @@ from math import sqrt
 
 import dask
 import networkx as nx
-import numba
 import numpy as np
 import pandas as pd
 import scipy.stats
+
+try:
+    import numba
+
+    NUMBA_AVAILABLE = True
+except ImportError:
+    NUMBA_AVAILABLE = False
 
 
 def get_track_segments_from_graph(track_graph):
@@ -259,8 +265,7 @@ def calculate_empirical_state_transition(
     return normalize_to_probability(exponential_pdf, axis=2)
 
 
-@numba.njit(cache=True)
-def viterbi(initial_conditions, state_transition, likelihood):
+def viterbi_no_numba(initial_conditions, state_transition, likelihood):
     """Find the most likely sequence of paths using the Viterbi algorithm.
 
     Note that the state_transition matrix is time-dependent. NaNs are removed
@@ -310,6 +315,16 @@ def viterbi(initial_conditions, state_transition, likelihood):
         ]
 
     return most_probable_state_ind
+
+
+if NUMBA_AVAILABLE:
+
+    @numba.njit(cache=True)
+    def viterbi(initial_conditions, state_transition, likelihood):
+        return viterbi_no_numba(initial_conditions, state_transition, likelihood)
+
+else:
+    viterbi = viterbi_no_numba
 
 
 def classify_track_segments(

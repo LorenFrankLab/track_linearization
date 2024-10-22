@@ -9,10 +9,12 @@ INSTALL_REQUIRES = [
     "pandas",
     "dask",
     "networkx",
-    "numba",
-    "ipympl",
 ]
 TESTS_REQUIRE = ["pytest >= 2.7.1"]
+EXTRAS_REQUIRE = {
+    "numba": ["numba"],  # Optional dependency
+    "ipympl": ["ipympl"],  # Optional dependency
+}
 
 setup(
     name="track_linearization",
@@ -25,4 +27,5 @@ setup(
     packages=find_packages(),
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRE,
+    extras_require=EXTRAS_REQUIRE,
 )
