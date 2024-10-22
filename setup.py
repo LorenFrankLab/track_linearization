@@ -18,7 +18,7 @@ EXTRAS_REQUIRE = {
 
 setup(
     name="track_linearization",
-    version="2.3.1",
+    version="2.3.2",
     license="MIT",
     description=(""),
     author="",
