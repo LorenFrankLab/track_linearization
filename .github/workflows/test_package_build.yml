@@ -76,7 +76,7 @@ jobs:
       - name: Install test extras
         run: pip install package_name[test]
       - name: Run tests
-        run: pytest --doctest-modules -v --pyargs package_name
+        run: pytest --doctest-modules -v --pyargs track_linearization
       - name: Test notebook
         shell: bash -l {0}
         run: |
