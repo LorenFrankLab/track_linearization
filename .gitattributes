@@ -1,2 +1,7 @@
 linguist-language=python
 notebooks/* linguist-vendored
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+.git_archival.txt export-subst

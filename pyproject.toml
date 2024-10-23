@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "track_linearization"
+description = "A python package to map 2D trajectories to 1D."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [{ name = "Eric Denovellis", email = "eric.denovellis@ucsf.edu" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = ["numpy", "scipy", "matplotlib", "pandas", "dask", "networkx"]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/LorenFrankLab/track_linearization"
+"Bug Tracker" = "https://github.com/LorenFrankLab/track_linearization/issues"
+
+[project.optional-dependencies]
+test = ["black", "pytest", "pytest-cov"]
+opt = ["numba", "ipympl"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/track_linearization/_version.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [".git_archival.txt"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/track_linearization"]
