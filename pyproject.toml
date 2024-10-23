@@ -22,7 +22,7 @@ dynamic = ["version"]
 "Bug Tracker" = "https://github.com/LorenFrankLab/track_linearization/issues"
 
 [project.optional-dependencies]
-test = ["black", "pytest", "pytest-cov"]
+test = ["black", "pytest", "pytest-cov", "jupyter", "nbconvert"]
 opt = ["numba", "ipympl"]
 
 [tool.hatch.version]
