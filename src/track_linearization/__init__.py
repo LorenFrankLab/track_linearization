@@ -7,3 +7,8 @@ from track_linearization.utils import (
     plot_graph_as_1D,
     plot_track_graph,
 )
+
+try:
+    from ._version import __version__
+except ImportError:
+    pass
