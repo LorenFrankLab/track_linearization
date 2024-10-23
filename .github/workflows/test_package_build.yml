@@ -3,14 +3,12 @@ name: Test building package and publish
 on:
   push:
     branches:
-      - main
-      - maint/*
+      - master
     tags:
       - "*"
   pull_request:
     branches:
-      - main
-      - maint/*
+      - master
 defaults:
   run:
     shell: bash
