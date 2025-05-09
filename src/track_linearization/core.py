@@ -821,3 +821,76 @@ def get_linearized_position(
             "projected_y_position": projected_y_position,
         }
     )
+
+
+
+def project_1d_to_2d(
+    linear_position: np.ndarray,
+    track_graph: nx.Graph,
+    edge_order: List[Edge],
+    edge_spacing: Union[float, List[float]] = 0.0,
+) -> np.ndarray:
+    """
+    Map 1-D linear positions back to 2-D coordinates on the track graph.
+
+    Parameters
+    ----------
+    linear_position : np.ndarray, shape (n_time,)
+    track_graph : networkx.Graph
+        Same graph you passed to `get_linearized_position`.
+        Nodes must have `"pos"`; edges must have `"distance"`.
+    edge_order : list[tuple(node, node)]
+        Same order you used for linearisation.
+    edge_spacing : float or list of float, optional
+        Controls the spacing between track segments in 1D position.
+        If float, applied uniformly. If list, length must be `len(edge_order) - 1`.
+
+    Returns
+    -------
+    coords : np.ndarray, shape (n_time, n_space)
+        2-D (or 3-D) coordinates corresponding to each 1-D input.
+        Positions that fall beyond the last edge are clipped to the last node.
+        NaNs in `linear_position` propagate to rows of NaNs.
+    """
+    linear_position = np.asarray(linear_position, dtype=float)
+    n_edges = len(edge_order)
+
+    # --- edge lengths & spacing ------------------------------------------------
+    edge_lengths = np.array([track_graph.edges[e]["distance"] for e in edge_order],
+                            dtype=float)
+
+    if isinstance(edge_spacing, (int, float)):
+        gaps = np.full(max(0, n_edges-1), float(edge_spacing))
+    else:
+        gaps = np.asarray(edge_spacing, dtype=float)
+        if gaps.size != max(0, n_edges-1):
+            raise ValueError("edge_spacing length must be len(edge_order)‑1")
+
+    # cumulative start position of each edge
+    cumulative = np.concatenate([
+        [0.0],
+        np.cumsum(edge_lengths[:-1] + gaps)
+    ])                                    # shape (n_edges,)
+
+    # --- vectorised lookup -----------------------------------------------------
+    idx = np.searchsorted(cumulative, linear_position, side="right") - 1
+    idx = np.clip(idx, 0, n_edges-1)      # clamp to valid edge index
+
+    # handle NaNs early so they don't pollute math
+    nan_mask = ~np.isfinite(linear_position)
+    idx[nan_mask] = 0                     # dummy index, will overwrite later
+
+    # param along each chosen edge
+    t = (linear_position - cumulative[idx]) / edge_lengths[idx]
+    t = np.clip(t, 0.0, 1.0)              # project extremes onto endpoints
+
+    # gather endpoint coordinates
+    node_pos = nx.get_node_attributes(track_graph, "pos")
+    u = np.array([node_pos[edge_order[i][0]] for i in idx])
+    v = np.array([node_pos[edge_order[i][1]] for i in idx])
+
+    coords = (1.0 - t[:, None]) * u + t[:, None] * v
+
+    # propagate NaNs from the input
+    coords[nan_mask] = np.nan
+    return coords
