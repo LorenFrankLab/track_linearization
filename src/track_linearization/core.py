@@ -1,5 +1,5 @@
 from math import sqrt
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import dask
 import networkx as nx
@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse
 import scipy.stats
-from networkx import Graph  # More specific type for track_graph
+from networkx import Graph
 
 try:
     import numba
