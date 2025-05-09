@@ -9,6 +9,8 @@ import scipy.sparse
 import scipy.stats
 from networkx import Graph
 
+Edge = Tuple[Any, Any]
+
 try:
     import numba
 
@@ -445,7 +447,6 @@ def viterbi_no_numba(
         Original code takes `np.log(state_transition + LOG_EPS)`.
     likelihood : np.ndarray, shape (n_time, n_states)
         Likelihood of observations given states. `likelihood[t, s]` is P(obs_t | state_s).
-        Original code takes `np.log(likelihood)`.
 
     Returns
     -------
@@ -628,7 +629,7 @@ def _calculate_linear_position(
     track_graph: "Graph",
     position: np.ndarray,
     track_segment_id: np.ndarray,
-    edge_order: List[Tuple[Any, Any]],
+    edge_order: List[Edge],
     edge_spacing: Union[float, List[float]],
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Determines the linear position given a 2D position and a track graph.
@@ -726,7 +727,7 @@ def _calculate_linear_position(
 def get_linearized_position(
     position: np.ndarray,
     track_graph: "Graph",
-    edge_order: Optional[List[Tuple[Any, Any]]] = None,
+    edge_order: Optional[List[Edge]] = None,
     edge_spacing: Union[float, List[float]] = 0.0,
     use_HMM: bool = False,
     route_euclidean_distance_scaling: float = 1.0,
@@ -748,7 +749,7 @@ def get_linearized_position(
         Controls order of track segments in 1D position. Specify as edges as
         node pairs such as [(node1, node2), (node2, node3)]. These edge tuples
         must be keys in `track_graph.edges`.
-    edge_spacing : float or list of float, optional # Description clarified
+    edge_spacing : float or list of float, optional
         Controls the spacing between track segments in 1D position.
         If float, applied uniformly. If list, length must be `len(edge_order) - 1`.
         Default is 0.0.
