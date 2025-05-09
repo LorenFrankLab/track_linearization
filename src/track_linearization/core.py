@@ -206,7 +206,7 @@ def route_distance(
 
     # calculate path distance
     path_distance = scipy.sparse.csgraph.dijkstra(
-        nx.to_scipy_sparse_matrix(track_graph, weight="distance")
+        nx.to_scipy_sparse_array(track_graph, weight="distance")
     )
     n_total_nodes = len(track_graph.nodes) # After adding temporary nodes
     node_ind = np.arange(n_total_nodes)

@@ -14,7 +14,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "scipy", "matplotlib", "pandas", "dask", "networkx"]
+dependencies = ["numpy", "scipy", "matplotlib", "pandas", "dask", "networkx>=3.2.1"]
 dynamic = ["version"]
 
 [project.urls]
