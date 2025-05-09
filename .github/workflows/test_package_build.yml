@@ -17,25 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
-
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
-
+          python-version: "3.10"
       - run: pip install --upgrade build twine
       - name: Build sdist and wheel
         run: python -m build
       - run: twine check dist/*
-
       - name: Upload sdist and wheel artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
-          if-no-files-found: error
-
       - name: Build git archive
         run: mkdir archive && git archive -v -o archive/archive.tgz HEAD
       - name: Upload git archive artifact
@@ -52,13 +47,13 @@ jobs:
     steps:
       - name: Download sdist and wheel artifacts
         if: matrix.package != 'archive'
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
       - name: Download git archive artifact
         if: matrix.package == 'archive'
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: archive
           path: archive/
