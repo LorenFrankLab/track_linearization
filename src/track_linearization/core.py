@@ -71,8 +71,8 @@ def project_points_to_segment(
         / sum_squares
     )
 
-    nx_param[np.where(nx_param < 0)] = 0.0
-    nx_param[np.where(nx_param > 1)] = 1.0
+    np.clip(nx_param, 0.0, 1.0, out=nx_param)
+
     return node1[np.newaxis, ...] + (
         nx_param[:, :, np.newaxis] * segment_diff[np.newaxis, ...]
     )
