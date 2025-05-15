@@ -872,11 +872,9 @@ def project_1d_to_2d(
         np.cumsum(edge_lengths[:-1] + gaps)
     ])                                    # shape (n_edges,)
 
-    # --- vectorised lookup -----------------------------------------------------
     idx = np.searchsorted(cumulative, linear_position, side="right") - 1
     idx = np.clip(idx, 0, n_edges-1)      # clamp to valid edge index
 
-    # handle NaNs early so they don't pollute math
     nan_mask = ~np.isfinite(linear_position)
     idx[nan_mask] = 0                     # dummy index, will overwrite later
 
