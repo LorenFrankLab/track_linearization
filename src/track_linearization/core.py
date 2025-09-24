@@ -173,7 +173,7 @@ def route_distance(
         Returns NaNs if any input candidate is NaN.
     """
     # TODO: speedup function. This takes the most time
-    n_segments = len(track_graph.edges) # Based on original graph's edges
+    n_segments = len(track_graph.edges)  # Based on original graph's edges
     if np.any(np.isnan(candidates_t) | np.isnan(candidates_t_1)):
         return np.full((candidates_t_1.shape[0], candidates_t.shape[0]), np.nan)
 
@@ -191,7 +191,9 @@ def route_distance(
         node_names.append(node_name_t_1)
         nx.add_path(track_graph, [node1, node_name_t, node2])
         nx.add_path(track_graph, [node1, node_name_t_1, node2])
-        nx.add_path(track_graph, [node_name_t, node_name_t_1]) # Connects candidates directly
+        nx.add_path(
+            track_graph, [node_name_t, node_name_t_1]
+        )  # Connects candidates directly
         track_graph.nodes[node_name_t]["pos"] = tuple(position_t)
         track_graph.nodes[node_name_t_1]["pos"] = tuple(position_t_1)
 
@@ -208,16 +210,16 @@ def route_distance(
     path_distance = scipy.sparse.csgraph.dijkstra(
         nx.to_scipy_sparse_array(track_graph, weight="distance")
     )
-    n_total_nodes = len(track_graph.nodes) # After adding temporary nodes
+    n_total_nodes = len(track_graph.nodes)  # After adding temporary nodes
     node_ind = np.arange(n_total_nodes)
     # These indices assume temporary nodes are added contiguously at the end
     # and in pairs (t, t-1) for each original edge.
-    start_node_ind = node_ind[n_original_nodes::2]      # Corresponds to t_0_ nodes
+    start_node_ind = node_ind[n_original_nodes::2]  # Corresponds to t_0_ nodes
     end_node_ind = node_ind[n_original_nodes + 1 :: 2]  # Corresponds to t_1_ nodes
 
     dist_matrix_slice = path_distance[start_node_ind][:, end_node_ind]
 
-    track_graph.remove_nodes_from(node_names) # Clean up graph
+    track_graph.remove_nodes_from(node_names)  # Clean up graph
 
     return dist_matrix_slice
 
@@ -277,9 +279,7 @@ def batch_route_distance(
     return np.stack(distances)
 
 
-def route_distance_change(
-    position: np.ndarray, track_graph: "Graph"
-) -> np.ndarray:
+def route_distance_change(position: np.ndarray, track_graph: "Graph") -> np.ndarray:
     """Calculates route distances between projected positions at successive time points.
 
     Parameters
@@ -420,7 +420,7 @@ def calculate_empirical_state_transition(
 
     n_states = route_and_euclidean_distance_similarity.shape[1]
     # Add bias after first normalization
-    if n_states > 0: # Avoid error with identity matrix if n_segments is 0
+    if n_states > 0:  # Avoid error with identity matrix if n_segments is 0
         exponential_pdf += np.identity(n_states)[np.newaxis] * diagonal_bias
 
     return normalize_to_probability(exponential_pdf, axis=2)
@@ -467,13 +467,14 @@ def viterbi_no_numba(
 
     # recursion
     for time_ind in range(1, n_time):
-        prior = posterior_prob[time_ind - 1][:, np.newaxis] + log_state_transition[time_ind]
+        prior = (
+            posterior_prob[time_ind - 1][:, np.newaxis] + log_state_transition[time_ind]
+        )
 
-        for state_ind in range(n_states): # current state `j`
+        for state_ind in range(n_states):  # current state `j`
             path_pointers[time_ind, state_ind] = np.argmax(prior[:, state_ind])
             posterior_prob[time_ind, state_ind] = (
-                np.max(prior[:, state_ind])
-                + log_likelihood[time_ind, state_ind]
+                np.max(prior[:, state_ind]) + log_likelihood[time_ind, state_ind]
             )
 
     # termination
@@ -491,12 +492,16 @@ def viterbi_no_numba(
 
 
 if NUMBA_AVAILABLE:
+
     @numba.njit(cache=True)
-    def viterbi(initial_conditions: np.ndarray,
-                state_transition: np.ndarray,
-                likelihood: np.ndarray) -> np.ndarray:
+    def viterbi(
+        initial_conditions: np.ndarray,
+        state_transition: np.ndarray,
+        likelihood: np.ndarray,
+    ) -> np.ndarray:
         # Calls the Python version, which Numba will JIT compile
         return viterbi_no_numba(initial_conditions, state_transition, likelihood)
+
 else:
     viterbi = viterbi_no_numba
 
@@ -545,7 +550,7 @@ def classify_track_segments(
        (ACM), pp. 336-343.
     """
     n_segments = len(track_graph.edges)
-    if n_segments == 0: # Handle case with no segments
+    if n_segments == 0:  # Handle case with no segments
         return np.full(position.shape[0], np.nan)
 
     initial_conditions = np.ones((n_segments,))
@@ -674,7 +679,7 @@ def _calculate_linear_position(
         edge_spacing_list = [float(edge_spacing)] * (n_edges - 1) if n_edges > 1 else []
     elif isinstance(edge_spacing, list):
         if len(edge_spacing) != max(0, n_edges - 1):
-             raise ValueError(f"edge_spacing list length must be {max(0, n_edges - 1)}")
+            raise ValueError(f"edge_spacing list length must be {max(0, n_edges - 1)}")
         edge_spacing_list = [float(es) for es in edge_spacing]
     else:
         raise TypeError("edge_spacing must be float or list of floats.")
@@ -686,7 +691,7 @@ def _calculate_linear_position(
         start_node_linear_position.append(counter)
 
         try:
-            counter += track_graph.edges[edge]["distance"] + edge_spacing[ind]
+            counter += track_graph.edges[edge]["distance"] + edge_spacing_list[ind]
         except IndexError:
             pass
 
@@ -823,7 +828,6 @@ def get_linearized_position(
     )
 
 
-
 def project_1d_to_2d(
     linear_position: np.ndarray,
     track_graph: nx.Graph,
@@ -856,31 +860,31 @@ def project_1d_to_2d(
     n_edges = len(edge_order)
 
     # --- edge lengths & spacing ------------------------------------------------
-    edge_lengths = np.array([track_graph.edges[e]["distance"] for e in edge_order],
-                            dtype=float)
+    edge_lengths = np.array(
+        [track_graph.edges[e]["distance"] for e in edge_order], dtype=float
+    )
 
     if isinstance(edge_spacing, (int, float)):
-        gaps = np.full(max(0, n_edges-1), float(edge_spacing))
+        gaps = np.full(max(0, n_edges - 1), float(edge_spacing))
     else:
         gaps = np.asarray(edge_spacing, dtype=float)
-        if gaps.size != max(0, n_edges-1):
+        if gaps.size != max(0, n_edges - 1):
             raise ValueError("edge_spacing length must be len(edge_order)‑1")
 
     # cumulative start position of each edge
-    cumulative = np.concatenate([
-        [0.0],
-        np.cumsum(edge_lengths[:-1] + gaps)
-    ])                                    # shape (n_edges,)
+    cumulative = np.concatenate(
+        [[0.0], np.cumsum(edge_lengths[:-1] + gaps)]
+    )  # shape (n_edges,)
 
     idx = np.searchsorted(cumulative, linear_position, side="right") - 1
-    idx = np.clip(idx, 0, n_edges-1)      # clamp to valid edge index
+    idx = np.clip(idx, 0, n_edges - 1)  # clamp to valid edge index
 
     nan_mask = ~np.isfinite(linear_position)
-    idx[nan_mask] = 0                     # dummy index, will overwrite later
+    idx[nan_mask] = 0  # dummy index, will overwrite later
 
     # param along each chosen edge
     t = (linear_position - cumulative[idx]) / edge_lengths[idx]
-    t = np.clip(t, 0.0, 1.0)              # project extremes onto endpoints
+    t = np.clip(t, 0.0, 1.0)  # project extremes onto endpoints
 
     # gather endpoint coordinates
     node_pos = nx.get_node_attributes(track_graph, "pos")
