@@ -6,13 +6,20 @@ build-backend = "hatchling.build"
 name = "track_linearization"
 description = "A python package to map 2D trajectories to 1D."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Eric Denovellis", email = "eric.denovellis@ucsf.edu" }]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
 ]
 dependencies = ["numpy", "scipy", "matplotlib", "pandas", "dask", "networkx>=3.2.1"]
 dynamic = ["version"]
@@ -22,8 +29,9 @@ dynamic = ["version"]
 "Bug Tracker" = "https://github.com/LorenFrankLab/track_linearization/issues"
 
 [project.optional-dependencies]
-test = ["black", "pytest", "pytest-cov", "jupyter", "nbconvert"]
+test = ["black", "pytest", "pytest-cov", "jupyter", "nbconvert", "ruff", "mypy"]
 opt = ["numba", "ipympl"]
+dev = ["black", "pytest", "pytest-cov", "jupyter", "nbconvert", "ruff", "mypy", "pre-commit"]
 
 [tool.hatch.version]
 source = "vcs"
@@ -36,3 +44,51 @@ exclude = [".git_archival.txt"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/track_linearization"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long, handled by black
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["src/track_linearization/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--doctest-modules",
+    "--cov=track_linearization",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+]

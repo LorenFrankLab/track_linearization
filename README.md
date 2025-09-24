@@ -20,7 +20,7 @@ Or
 
 ```bash
 git clone https://github.com/LorenFrankLab/track_linearization.git
-python setup.py install
+pip install .
 ```
 
 ### Usage
@@ -35,5 +35,5 @@ python setup.py install
 cd <package folder>
 conda env create -f environment.yml
 conda activate track_linearization
-python setup.py develop
+pip install -e .
 ```
