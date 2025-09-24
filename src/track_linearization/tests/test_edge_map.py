@@ -30,9 +30,10 @@ def test_edge_map_merge_two_edges_to_one_label():
     df = core.get_linearized_position(pts, g, edge_map={10:99, 20:99}, use_HMM=False)
     assert set(df["track_segment_id"].unique()) == {99}
 
-def test_edge_map_invalid_target_raises():
+def test_edge_map_invalid_source_ignored():
     g = _mk_line_graph()
     pts = np.array([[0.2,0.0]])
-    with pytest.raises(ValueError):
-        # 42 is not a real edge_id in the graph; must raise
-        core.get_linearized_position(pts, g, edge_map={10:42}, use_HMM=False)
+    # 999 is not a real edge_id in the graph; should be ignored
+    df = core.get_linearized_position(pts, g, edge_map={999:42, 10:50}, use_HMM=False)
+    # Should work and use the valid mapping (10->50) while ignoring invalid key (999)
+    assert df.track_segment_id.iloc[0] == 50

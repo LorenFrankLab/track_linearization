@@ -646,8 +646,8 @@ def _calculate_linear_position(
     position : np.ndarray, shape (n_time, n_space)
         Spatial positions.
     track_segment_id : np.ndarray, shape (n_time,)
-        Integer 'edge_id' for each time point. NaNs should be pre-handled or
-        will lead to errors/defaulting to edge_id 0.
+        Integer segment indices (0..E-1) for each time point. NaNs should be pre-handled or
+        will lead to errors/defaulting to index 0.
     edge_order : list of 2-tuples
         Ordered list of edge tuples (node1, node2) defining the linearization path.
         These tuples are keys in `track_graph.edges`.
@@ -697,27 +697,18 @@ def _calculate_linear_position(
 
     start_node_linear_position = np.asarray(start_node_linear_position)
 
-    track_segment_id_to_start_node_linear_position = {
-        track_graph.edges[e]["edge_id"]: snlp
-        for e, snlp in zip(edge_order, start_node_linear_position)
-    }
+    # Use segment indices directly to look up start node linear positions
+    start_node_linear_position_by_idx = start_node_linear_position[track_segment_id]
 
-    start_node_linear_position = np.asarray(
-        [
-            track_segment_id_to_start_node_linear_position[edge_id]
-            for edge_id in track_segment_id
-        ]
-    )
-
-    track_segment_id_to_edge = {track_graph.edges[e]["edge_id"]: e for e in edge_order}
+    # Use segment indices to look up the corresponding edge and get start node
     start_node_id = np.asarray(
-        [track_segment_id_to_edge[edge_id][0] for edge_id in track_segment_id]
+        [edge_order[seg_idx][0] for seg_idx in track_segment_id]
     )
     start_node_2D_position = np.asarray(
         [track_graph.nodes[node]["pos"] for node in start_node_id]
     )
 
-    linear_position = start_node_linear_position + (
+    linear_position = start_node_linear_position_by_idx + (
         np.linalg.norm(start_node_2D_position - projected_track_positions, axis=1)
     )
     linear_position[is_nan] = np.nan
@@ -791,10 +782,14 @@ def get_linearized_position(
     if edge_order is None:
         edge_order = list(track_graph.edges)
 
+    # Create mapping between edge IDs and indices
+    edge_id_by_index = np.array([track_graph.edges[e]["edge_id"] for e in edge_order])
+    index_by_edge_id = {eid: i for i, eid in enumerate(edge_id_by_index)}
+
     # Figure out the most probable track segement that correponds to
-    # 2D position
+    # 2D position (returns segment indices 0..E-1)
     if use_HMM:
-        track_segment_id = classify_track_segments(
+        seg_idx = classify_track_segments(
             track_graph,
             position,
             route_euclidean_distance_scaling=route_euclidean_distance_scaling,
@@ -803,25 +798,31 @@ def get_linearized_position(
         )
     else:
         track_segments = get_track_segments_from_graph(track_graph)
-        track_segment_id = find_nearest_segment(track_segments, position)
+        seg_idx = find_nearest_segment(track_segments, position)
 
-    # Allow resassignment of edges
+    # Convert segment indices to edge labels
+    edge_ids = edge_id_by_index[seg_idx]
+
+    # Apply edge_map to labels
     if edge_map is not None:
-        for cur_edge, new_edge in edge_map.items():
-            track_segment_id[track_segment_id == cur_edge] = new_edge
+        # Apply mapping, keeping original dtype flexible for strings/mixed types
+        mapped_edge_ids = np.array([edge_map.get(eid, eid) for eid in edge_ids])
+        # Keep using original seg_idx for internal operations - only use mapped_edge_ids for output
+    else:
+        mapped_edge_ids = edge_ids
 
     (
         linear_position,
         projected_x_position,
         projected_y_position,
     ) = _calculate_linear_position(
-        track_graph, position, track_segment_id, edge_order, edge_spacing
+        track_graph, position, seg_idx, edge_order, edge_spacing
     )
 
     return pd.DataFrame(
         {
             "linear_position": linear_position,
-            "track_segment_id": track_segment_id,
+            "track_segment_id": mapped_edge_ids,
             "projected_x_position": projected_x_position,
             "projected_y_position": projected_y_position,
         }
