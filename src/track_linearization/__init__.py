@@ -11,4 +11,7 @@ from track_linearization.utils import (
 try:
     from ._version import __version__
 except ImportError:
-    pass
+    # Fallback for development installs
+    from importlib.metadata import version
+
+    __version__ = version("track_linearization")
