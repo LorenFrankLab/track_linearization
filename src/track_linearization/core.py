@@ -803,8 +803,13 @@ def get_linearized_position(
     # Convert segment indices to edge labels
     edge_ids = edge_id_by_index[seg_idx]
 
-    # Apply edge_map to labels
+    # Apply edge_map to labels and validate
     if edge_map is not None:
+        invalid_keys = [k for k in edge_map.keys() if k not in index_by_edge_id]
+        if invalid_keys:
+            raise ValueError(f"edge_map contains invalid source edge_ids: {invalid_keys}. "
+                           f"Valid edge_ids are: {list(index_by_edge_id.keys())}")
+
         # Apply mapping, keeping original dtype flexible for strings/mixed types
         mapped_edge_ids = np.array([edge_map.get(eid, eid) for eid in edge_ids])
         # Keep using original seg_idx for internal operations - only use mapped_edge_ids for output

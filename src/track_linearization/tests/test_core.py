@@ -670,17 +670,15 @@ class TestEdgeMapParameter:
         """Test edge_map validation with invalid keys."""
         position = np.array([[15, 0]])
 
-        # Map non-existent edge ID - should be ignored
+        # Map non-existent edge ID - should raise ValueError
         invalid_edge_map = {999: 1}  # 999 doesn't exist
 
-        pos_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=invalid_edge_map
-        )
-
-        # Should still work (invalid keys ignored)
-        assert hasattr(pos_df, 'linear_position'), "Invalid edge_map keys should be ignored"
+        with pytest.raises(ValueError, match="edge_map contains invalid source edge_ids"):
+            get_linearized_position(
+                position=position,
+                track_graph=simple_rectangular_track,
+                edge_map=invalid_edge_map
+            )
 
     def test_edge_map_none_vs_no_parameter(self, simple_rectangular_track):
         """Test that edge_map=None is equivalent to not providing edge_map."""
