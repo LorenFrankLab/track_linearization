@@ -1,15 +1,20 @@
+from typing import Any
+
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import pandas as pd
 
 from track_linearization.core import (
     get_track_segments_from_graph,
     project_points_to_segment,
 )
 
+Edge = tuple[Any, Any]
 
-def make_track_graph(node_positions, edges):
+
+def make_track_graph(node_positions: np.ndarray, edges: np.ndarray) -> nx.Graph:
     """Constructs a graph representation of a 2D track.
 
     Node positions determine the name of the node by order in array.
@@ -42,7 +47,9 @@ def make_track_graph(node_positions, edges):
     return track_graph
 
 
-def plot_track_graph(track_graph, ax=None, draw_edge_labels=False, **kwds):
+def plot_track_graph(
+    track_graph: nx.Graph, ax: plt.Axes = None, draw_edge_labels: bool = False, **kwds
+) -> None:
     """
 
     Parameters
@@ -79,15 +86,15 @@ def plot_track_graph(track_graph, ax=None, draw_edge_labels=False, **kwds):
 
 
 def plot_graph_as_1D(
-    track_graph,
-    edge_order=None,
-    edge_spacing=0,
-    ax=None,
-    axis="x",
-    other_axis_start=0.0,
-    draw_edge_labels=False,
-    node_size=300,
-    node_color="#1f77b4",
+    track_graph: nx.Graph,
+    edge_order: list[Edge] | None = None,
+    edge_spacing: float | list[float] = 0,
+    ax: plt.Axes | None = None,
+    axis: str = "x",
+    other_axis_start: float = 0.0,
+    draw_edge_labels: bool = False,
+    node_size: int = 300,
+    node_color: str = "#1f77b4",
 ):
     if ax is None:
         ax = plt.gca()
@@ -264,7 +271,9 @@ def plot_graph_as_1D(
         ax.set_ylabel("Linear Position [cm]")
 
 
-def _get_projected_track_position(track_graph, track_segment_id, position):
+def _get_projected_track_position(
+    track_graph: nx.Graph, track_segment_id: np.ndarray, position: np.ndarray
+) -> np.ndarray:
     track_segment_id[np.isnan(track_segment_id)] = 0
     track_segment_id = track_segment_id.astype(int)
 
@@ -275,12 +284,12 @@ def _get_projected_track_position(track_graph, track_segment_id, position):
 
 
 def make_actual_vs_linearized_position_movie(
-    track_graph,
-    position_df,
-    time_slice=None,
-    movie_name="actual_vs_linearized",
-    frame_rate=33,
-):
+    track_graph: nx.Graph,
+    position_df: pd.DataFrame,
+    time_slice: slice | None = None,
+    movie_name: str = "actual_vs_linearized",
+    frame_rate: float = 33,
+) -> None:
     """
 
     Parameters

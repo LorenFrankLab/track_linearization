@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from math import sqrt
-from typing import Any, Optional, Union
+from typing import Any
 
 import dask
 import networkx as nx
@@ -185,7 +185,7 @@ def route_distance(
     # insert virtual node
     # Assuming len(candidates_t) == len(candidates_t_1) == len(edges)
     for edge_number, (position_t, position_t_1, (node1, node2)) in enumerate(
-        zip(candidates_t, candidates_t_1, edges)
+        zip(candidates_t, candidates_t_1, edges, strict=True)
     ):
         node_name_t, node_name_t_1 = f"t_0_{edge_number}", f"t_1_{edge_number}"
         node_names.append(node_name_t)
@@ -275,7 +275,9 @@ def batch_route_distance(
     copy_graph = track_graph.copy()
     distances = [
         route_distance(p_t, p_t_1, copy_graph)
-        for p_t, p_t_1 in zip(projected_track_position_t, projected_track_position_t_1)
+        for p_t, p_t_1 in zip(
+            projected_track_position_t, projected_track_position_t_1, strict=True
+        )
     ]
     return np.stack(distances)
 
@@ -301,7 +303,7 @@ def route_distance_change(position: np.ndarray, track_graph: "Graph") -> np.ndar
     projected_track_position = project_points_to_segment(track_segments, position)
     n_segments = len(track_segments)
 
-    all_distances_results: list[Union[np.ndarray, dask.delayed.Delayed]] = [
+    all_distances_results: list[np.ndarray | dask.delayed.Delayed] = [
         np.full((1, n_segments, n_segments), np.nan)
     ]
 
@@ -609,7 +611,9 @@ def batch_linear_distance(
     copy_graph = track_graph.copy()
     linear_distance: list[float] = []
 
-    for (x3, y3), (node1, node2) in zip(projected_track_positions, edge_ids):
+    for (x3, y3), (node1, node2) in zip(
+        projected_track_positions, edge_ids, strict=True
+    ):
         x1, y1 = copy_graph.nodes[node1]["pos"]
         left_distance = sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2)
         nx.add_path(copy_graph, [node1, "projected"], distance=left_distance)
@@ -636,7 +640,7 @@ def _calculate_linear_position(
     position: np.ndarray,
     track_segment_id: np.ndarray,
     edge_order: list[Edge],
-    edge_spacing: Union[float, list[float]],
+    edge_spacing: float | list[float],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Determines the linear position given a 2D position and a track graph.
 
@@ -700,7 +704,7 @@ def _calculate_linear_position(
 
     track_segment_id_to_start_node_linear_position = {
         track_graph.edges[e]["edge_id"]: snlp
-        for e, snlp in zip(edge_order, start_node_linear_position)
+        for e, snlp in zip(edge_order, start_node_linear_position, strict=True)
     }
 
     start_node_linear_position = np.asarray(
@@ -733,13 +737,13 @@ def _calculate_linear_position(
 def get_linearized_position(
     position: np.ndarray,
     track_graph: "Graph",
-    edge_order: Optional[list[Edge]] = None,
-    edge_spacing: Union[float, list[float]] = 0.0,
+    edge_order: list[Edge] | None = None,
+    edge_spacing: float | list[float] = 0.0,
     use_HMM: bool = False,
     route_euclidean_distance_scaling: float = 1.0,
     sensor_std_dev: float = 5.0,
     diagonal_bias: float = 0.1,
-    edge_map: Optional[dict[int, int]] = None,
+    edge_map: dict[int, int] | None = None,
 ) -> pd.DataFrame:
     """Linearize 2D position based on graph representation of track.
 
@@ -833,7 +837,7 @@ def project_1d_to_2d(
     linear_position: np.ndarray,
     track_graph: nx.Graph,
     edge_order: list[Edge],
-    edge_spacing: Union[float, list[float]] = 0.0,
+    edge_spacing: float | list[float] = 0.0,
 ) -> np.ndarray:
     """
     Map 1-D linear positions back to 2-D coordinates on the track graph.
