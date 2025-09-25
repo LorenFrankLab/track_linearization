@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -316,7 +314,7 @@ def make_actual_vs_linearized_position_movie(
 
     # Set up formatting for the movie files
     Writer = animation.writers["ffmpeg"]
-    writer = Writer(fps=15, metadata=dict(artist="Me"), bitrate=1800)
+    writer = Writer(fps=15, metadata={"artist": "Me"}, bitrate=1800)
 
     fig, axes = plt.subplots(
         1,
@@ -387,7 +385,7 @@ def get_auto_linear_edge_order_spacing(
     track_graph: nx.Graph,
     start_node: object = None,
     spacing_between_unconnected_components=15.0,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Automatically determine the linear edge order and spacing
     using a depth-first search starting from the `start_node`.
 

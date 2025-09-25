@@ -1,13 +1,10 @@
-import os
-import sys
-
 import networkx as nx
 import numpy as np
 import pytest
 from scipy.stats import multivariate_normal
 
 import track_linearization.utils as utils
-from track_linearization import make_track_graph, get_linearized_position
+from track_linearization import get_linearized_position, make_track_graph
 
 
 # Shared fixtures
@@ -15,8 +12,8 @@ from track_linearization import make_track_graph, get_linearized_position
 def simple_track_data():
     """Basic track data for testing."""
     return {
-        'positions': [(0, 0), (30, 0), (30, 30), (0, 30)],
-        'edges': [(0, 1), (0, 3), (1, 2)]
+        "positions": [(0, 0), (30, 0), (30, 30), (0, 30)],
+        "edges": [(0, 1), (0, 3), (1, 2)],
     }
 
 
@@ -25,6 +22,7 @@ def matplotlib_pyplot():
     """Matplotlib pyplot if available, otherwise skip."""
     try:
         import matplotlib.pyplot as plt
+
         return plt
     except ImportError:
         pytest.skip("matplotlib not available")
@@ -44,13 +42,15 @@ class TestMakeTrackGraph:
         assert set(map(tuple, g.edges)) == set(edges), "Should have correct edges"
 
         for i, p in enumerate(pos):
-            assert tuple(g.nodes[i]["pos"]) == tuple(p), f"Node {i} should have position {tuple(p)}"
+            assert tuple(g.nodes[i]["pos"]) == tuple(
+                p
+            ), f"Node {i} should have position {tuple(p)}"
 
     @pytest.mark.parametrize("input_type", ["list", "array"])
     def test_make_track_graph_input_types(self, simple_track_data, input_type):
         """Test track graph creation with different input formats."""
-        positions = simple_track_data['positions']
-        edges = simple_track_data['edges']
+        positions = simple_track_data["positions"]
+        edges = simple_track_data["edges"]
 
         if input_type == "array":
             positions = np.array(positions, dtype=float)
@@ -62,8 +62,12 @@ class TestMakeTrackGraph:
 
         # Check distances are computed
         for edge in track_graph.edges:
-            assert 'distance' in track_graph.edges[edge], f"Edge {edge} should have distance"
-            assert track_graph.edges[edge]['distance'] > 0, f"Edge {edge} distance should be positive"
+            assert (
+                "distance" in track_graph.edges[edge]
+            ), f"Edge {edge} should have distance"
+            assert (
+                track_graph.edges[edge]["distance"] > 0
+            ), f"Edge {edge} distance should be positive"
 
     def test_make_track_graph_distance_calculation(self):
         """Test that edge distances are calculated correctly."""
@@ -74,10 +78,12 @@ class TestMakeTrackGraph:
 
         # Check specific distances
         expected_distance = 5.0  # hypotenuse of 3-4-5 triangle
-        assert abs(track_graph.edges[(0, 1)]['distance'] - expected_distance) < 1e-10, \
-            f"Distance should be {expected_distance}"
-        assert abs(track_graph.edges[(1, 2)]['distance'] - expected_distance) < 1e-10, \
-            f"Distance should be {expected_distance}"
+        assert (
+            abs(track_graph.edges[(0, 1)]["distance"] - expected_distance) < 1e-10
+        ), f"Distance should be {expected_distance}"
+        assert (
+            abs(track_graph.edges[(1, 2)]["distance"] - expected_distance) < 1e-10
+        ), f"Distance should be {expected_distance}"
 
 
 class TestEdgeOrdering:
@@ -106,14 +112,18 @@ class TestEdgeOrdering:
         # Simple circular track
         angle = np.linspace(-np.pi, np.pi, num=6, endpoint=False)
         radius = 10
-        node_positions = np.stack((radius * np.cos(angle), radius * np.sin(angle)), axis=1)
+        node_positions = np.stack(
+            (radius * np.cos(angle), radius * np.sin(angle)), axis=1
+        )
 
         node_ids = np.arange(node_positions.shape[0])
         edges = np.stack((node_ids, np.roll(node_ids, shift=1)), axis=1)
 
         track_graph = make_track_graph(node_positions, edges)
 
-        order, spacing = utils.get_auto_linear_edge_order_spacing(track_graph, start_node=0)
+        order, spacing = utils.get_auto_linear_edge_order_spacing(
+            track_graph, start_node=0
+        )
 
         assert len(order) == len(track_graph.edges), "Order should include all edges"
         assert spacing is not None, "Spacing should be returned"
@@ -136,7 +146,9 @@ class TestPlotting:
 
     def test_plot_track_graph_with_options(self, matplotlib_pyplot, simple_track_data):
         """Test plot_track_graph with various options."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         fig, ax = matplotlib_pyplot.subplots()
 
@@ -144,30 +156,38 @@ class TestPlotting:
         utils.plot_track_graph(track_graph, ax=ax)
 
         # Test with edge labels if supported
-        if 'draw_edge_labels' in utils.plot_track_graph.__code__.co_varnames:
+        if "draw_edge_labels" in utils.plot_track_graph.__code__.co_varnames:
             utils.plot_track_graph(track_graph, ax=ax, draw_edge_labels=True)
 
         matplotlib_pyplot.close(fig)
 
     @pytest.mark.parametrize("orientation", ["horizontal", "vertical"])
-    def test_plot_graph_as_1D_orientations(self, matplotlib_pyplot, simple_track_data, orientation):
+    def test_plot_graph_as_1D_orientations(
+        self, matplotlib_pyplot, simple_track_data, orientation
+    ):
         """Test 1D graph plotting with different orientations."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         if orientation == "horizontal":
             fig, ax = matplotlib_pyplot.subplots(figsize=(7, 1))
             utils.plot_graph_as_1D(track_graph, ax=ax)
         else:  # vertical
             fig, ax = matplotlib_pyplot.subplots(figsize=(1, 7))
-            if 'axis' in utils.plot_graph_as_1D.__code__.co_varnames:
+            if "axis" in utils.plot_graph_as_1D.__code__.co_varnames:
                 utils.plot_graph_as_1D(track_graph, axis="y", ax=ax)
 
         matplotlib_pyplot.close(fig)
 
     @pytest.mark.parametrize("edge_spacing", [0, 10])
-    def test_plot_graph_as_1D_with_spacing(self, matplotlib_pyplot, simple_track_data, edge_spacing):
+    def test_plot_graph_as_1D_with_spacing(
+        self, matplotlib_pyplot, simple_track_data, edge_spacing
+    ):
         """Test 1D plotting with different edge spacing."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         fig, ax = matplotlib_pyplot.subplots(figsize=(7, 1))
         utils.plot_graph_as_1D(track_graph, edge_spacing=edge_spacing, ax=ax)
@@ -182,7 +202,9 @@ class TestSpecialTrackTypes:
         # Create circular track like in the example
         angle = np.linspace(-np.pi, np.pi, num=12, endpoint=False)
         radius = 30
-        node_positions = np.stack((radius * np.cos(angle), radius * np.sin(angle)), axis=1)
+        node_positions = np.stack(
+            (radius * np.cos(angle), radius * np.sin(angle)), axis=1
+        )
 
         node_ids = np.arange(node_positions.shape[0])
         edges = np.stack((node_ids, np.roll(node_ids, shift=1)), axis=1)
@@ -195,7 +217,9 @@ class TestSpecialTrackTypes:
 
         # Each node should be connected to exactly 2 others in a circle
         degrees = [track_graph.degree(node) for node in track_graph.nodes]
-        assert all(deg == 2 for deg in degrees), "All nodes should have degree 2 in circle"
+        assert all(
+            deg == 2 for deg in degrees
+        ), "All nodes should have degree 2 in circle"
 
     def test_w_track_creation(self):
         """Test creating W-shaped track from example."""
@@ -247,17 +271,25 @@ class TestPlottingWithEdgeParameters:
     """Tests for plotting functions with edge parameters."""
 
     @pytest.mark.parametrize("edge_spacing", [0, 5, 15])
-    def test_plot_graph_as_1D_edge_spacing_variations(self, matplotlib_pyplot, simple_track_data, edge_spacing):
+    def test_plot_graph_as_1D_edge_spacing_variations(
+        self, matplotlib_pyplot, simple_track_data, edge_spacing
+    ):
         """Test plotting 1D graphs with different edge spacing values."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         fig, ax = matplotlib_pyplot.subplots(figsize=(10, 1))
         utils.plot_graph_as_1D(track_graph, edge_spacing=edge_spacing, ax=ax)
         matplotlib_pyplot.close(fig)
 
-    def test_plot_graph_as_1D_custom_edge_order(self, matplotlib_pyplot, simple_track_data):
+    def test_plot_graph_as_1D_custom_edge_order(
+        self, matplotlib_pyplot, simple_track_data
+    ):
         """Test plotting 1D graphs with custom edge order."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         # Test with custom edge order
         custom_edge_order = [(1, 2), (0, 1), (0, 3)]
@@ -266,19 +298,20 @@ class TestPlottingWithEdgeParameters:
         utils.plot_graph_as_1D(track_graph, edge_order=custom_edge_order, ax=ax)
         matplotlib_pyplot.close(fig)
 
-    def test_plot_graph_as_1D_edge_order_and_spacing_combined(self, matplotlib_pyplot, simple_track_data):
+    def test_plot_graph_as_1D_edge_order_and_spacing_combined(
+        self, matplotlib_pyplot, simple_track_data
+    ):
         """Test plotting with both edge_order and edge_spacing."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         edge_order = [(0, 3), (0, 1), (1, 2)]
         edge_spacing = 8
 
         fig, ax = matplotlib_pyplot.subplots(figsize=(12, 1))
         utils.plot_graph_as_1D(
-            track_graph,
-            edge_order=edge_order,
-            edge_spacing=edge_spacing,
-            ax=ax
+            track_graph, edge_order=edge_order, edge_spacing=edge_spacing, ax=ax
         )
         matplotlib_pyplot.close(fig)
 
@@ -302,7 +335,9 @@ class TestAutoEdgeOrdering:
                 track_graph, start_node=start_node
             )
 
-            assert len(order) == len(track_graph.edges), f"Should include all edges (start={start_node})"
+            assert len(order) == len(
+                track_graph.edges
+            ), f"Should include all edges (start={start_node})"
             assert spacing is not None, f"Should return spacing (start={start_node})"
 
     def test_get_auto_linear_edge_order_spacing_complex_track(self):
@@ -315,7 +350,9 @@ class TestAutoEdgeOrdering:
         edges = [(3, 0), (0, 5), (4, 5), (5, 1), (1, 2)]
         track_graph = make_track_graph(node_positions, edges)
 
-        order, spacing = utils.get_auto_linear_edge_order_spacing(track_graph, start_node=0)
+        order, spacing = utils.get_auto_linear_edge_order_spacing(
+            track_graph, start_node=0
+        )
 
         assert len(order) == len(edges), "Should include all W-track edges"
         assert spacing is not None, "Should return spacing for W-track"
@@ -330,19 +367,27 @@ class TestIntegration:
 
     def test_end_to_end_rectangular_track(self, matplotlib_pyplot, simple_track_data):
         """Integration test: create track, generate data, linearize, and plot."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         # Create synthetic position data
         x = np.linspace(0, 30, num=20)
-        position = np.concatenate([
-            np.stack((np.zeros_like(x), x[::-1]), axis=1),
-            np.stack((x, np.zeros_like(x)), axis=1),
-        ])
+        position = np.concatenate(
+            [
+                np.stack((np.zeros_like(x), x[::-1]), axis=1),
+                np.stack((x, np.zeros_like(x)), axis=1),
+            ]
+        )
         position += multivariate_normal(mean=0, cov=0.01).rvs(position.shape)
 
         # Test linearization
-        position_df = get_linearized_position(position=position, track_graph=track_graph)
-        assert len(position_df) == len(position), "Linearization output length should match input"
+        position_df = get_linearized_position(
+            position=position, track_graph=track_graph
+        )
+        assert len(position_df) == len(
+            position
+        ), "Linearization output length should match input"
 
         # Test plotting track
         fig, ax = matplotlib_pyplot.subplots()
@@ -354,9 +399,13 @@ class TestIntegration:
         utils.plot_graph_as_1D(track_graph, ax=ax)
         matplotlib_pyplot.close(fig)
 
-    def test_end_to_end_with_edge_parameters(self, matplotlib_pyplot, simple_track_data):
+    def test_end_to_end_with_edge_parameters(
+        self, matplotlib_pyplot, simple_track_data
+    ):
         """Integration test using custom edge parameters throughout."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         # Create position data
         position = np.array([[5, 0], [15, 0], [25, 0]])
@@ -372,12 +421,12 @@ class TestIntegration:
             track_graph=track_graph,
             edge_order=edge_order,
             edge_spacing=edge_spacing,
-            edge_map=edge_map
+            edge_map=edge_map,
         )
 
         assert len(position_df) == len(position), "Should handle all positions"
-        assert hasattr(position_df, 'linear_position'), "Should have linear positions"
-        assert hasattr(position_df, 'track_segment_id'), "Should have segment IDs"
+        assert hasattr(position_df, "linear_position"), "Should have linear positions"
+        assert hasattr(position_df, "track_segment_id"), "Should have segment IDs"
 
         # Check that edge mapping was applied
         unique_ids = set(position_df.track_segment_id.unique())
@@ -386,27 +435,28 @@ class TestIntegration:
         # Test plotting with same parameters
         fig, ax = matplotlib_pyplot.subplots(figsize=(12, 1))
         utils.plot_graph_as_1D(
-            track_graph,
-            edge_order=edge_order,
-            edge_spacing=edge_spacing,
-            ax=ax
+            track_graph, edge_order=edge_order, edge_spacing=edge_spacing, ax=ax
         )
         matplotlib_pyplot.close(fig)
 
     def test_track_graph_edge_attributes_complete(self, simple_track_data):
         """Test that track graphs have all expected edge attributes."""
-        track_graph = make_track_graph(simple_track_data['positions'], simple_track_data['edges'])
+        track_graph = make_track_graph(
+            simple_track_data["positions"], simple_track_data["edges"]
+        )
 
         for edge in track_graph.edges:
             edge_data = track_graph.edges[edge]
 
             # Should have distance
-            assert 'distance' in edge_data, f"Edge {edge} should have distance"
-            assert isinstance(edge_data['distance'], float), f"Edge {edge} distance should be float"
-            assert edge_data['distance'] > 0, f"Edge {edge} distance should be positive"
+            assert "distance" in edge_data, f"Edge {edge} should have distance"
+            assert isinstance(
+                edge_data["distance"], float
+            ), f"Edge {edge} distance should be float"
+            assert edge_data["distance"] > 0, f"Edge {edge} distance should be positive"
 
             # Should have edge_id
-            assert 'edge_id' in edge_data, f"Edge {edge} should have edge_id"
-            assert isinstance(edge_data['edge_id'], int), f"Edge {edge} ID should be integer"
-
-
+            assert "edge_id" in edge_data, f"Edge {edge} should have edge_id"
+            assert isinstance(
+                edge_data["edge_id"], int
+            ), f"Edge {edge} ID should be integer"

@@ -5,7 +5,7 @@ import pytest
 from scipy.stats import multivariate_normal
 
 import track_linearization.core as core
-from track_linearization import make_track_graph, get_linearized_position
+from track_linearization import get_linearized_position, make_track_graph
 
 
 # Test fixtures for common test data
@@ -40,11 +40,13 @@ def w_track():
 def rectangular_position_data():
     """Generate synthetic position data for rectangular track."""
     x = np.linspace(0, 30, num=50)
-    position = np.concatenate([
-        np.stack((np.zeros_like(x), x[::-1]), axis=1),  # bottom edge
-        np.stack((x, np.zeros_like(x)), axis=1),        # left edge
-        np.stack((np.ones_like(x) * 30, x), axis=1),    # right edge
-    ])
+    position = np.concatenate(
+        [
+            np.stack((np.zeros_like(x), x[::-1]), axis=1),  # bottom edge
+            np.stack((x, np.zeros_like(x)), axis=1),  # left edge
+            np.stack((np.ones_like(x) * 30, x), axis=1),  # right edge
+        ]
+    )
     # Add small amount of noise
     position += multivariate_normal(mean=0, cov=0.05).rvs(position.shape)
     return position
@@ -157,16 +159,23 @@ def test_rectangular_track_structure(simple_rectangular_track):
     assert track_graph.has_edge(1, 2), "Should have edge between nodes 1 and 2"
 
 
-def test_rectangular_track_linearization(simple_rectangular_track, rectangular_position_data):
+def test_rectangular_track_linearization(
+    simple_rectangular_track, rectangular_position_data
+):
     """Test linearization with synthetic position data on rectangular track."""
     position_df = get_linearized_position(
-        position=rectangular_position_data,
-        track_graph=simple_rectangular_track
+        position=rectangular_position_data, track_graph=simple_rectangular_track
     )
 
-    assert hasattr(position_df, 'linear_position'), "Result should have linear_position attribute"
-    assert len(position_df) == len(rectangular_position_data), "Output length should match input"
-    assert position_df.linear_position.notna().all(), "All linear positions should be non-null"
+    assert hasattr(
+        position_df, "linear_position"
+    ), "Result should have linear_position attribute"
+    assert len(position_df) == len(
+        rectangular_position_data
+    ), "Output length should match input"
+    assert (
+        position_df.linear_position.notna().all()
+    ), "All linear positions should be non-null"
 
 
 @pytest.mark.parametrize("edge_spacing", [0, 10, 20])
@@ -174,24 +183,28 @@ def test_rectangular_track_with_edge_spacing(simple_rectangular_track, edge_spac
     """Test linearization with different edge spacing values."""
     # Create simple test position data
     x = np.linspace(0, 30, num=20)
-    position = np.concatenate([
-        np.stack((np.zeros_like(x), x[::-1]), axis=1),
-        np.stack((x, np.zeros_like(x)), axis=1),
-    ])
+    position = np.concatenate(
+        [
+            np.stack((np.zeros_like(x), x[::-1]), axis=1),
+            np.stack((x, np.zeros_like(x)), axis=1),
+        ]
+    )
 
     position_df = get_linearized_position(
         position=position,
         track_graph=simple_rectangular_track,
-        edge_spacing=edge_spacing
+        edge_spacing=edge_spacing,
     )
 
-    assert hasattr(position_df, 'linear_position'), "Result should have linear_position"
+    assert hasattr(position_df, "linear_position"), "Result should have linear_position"
     assert len(position_df) == len(position), "Output length should match input"
 
     # Verify edge spacing effect on maximum position
     if edge_spacing > 0:
         max_expected = 2 * 30 + edge_spacing * 2  # Two 30-unit edges + gaps
-        assert position_df.linear_position.max() <= max_expected, f"Max position should be <= {max_expected}"
+        assert (
+            position_df.linear_position.max() <= max_expected
+        ), f"Max position should be <= {max_expected}"
 
 
 def test_rectangular_track_with_custom_edge_order():
@@ -209,20 +222,16 @@ def test_rectangular_track_with_custom_edge_order():
     edge_order_2 = [(2, 1), (1, 0), (0, 3)]
 
     position_df_1 = get_linearized_position(
-        position=position,
-        track_graph=track_graph,
-        edge_order=edge_order_1
+        position=position, track_graph=track_graph, edge_order=edge_order_1
     )
 
     position_df_2 = get_linearized_position(
-        position=position,
-        track_graph=track_graph,
-        edge_order=edge_order_2
+        position=position, track_graph=track_graph, edge_order=edge_order_2
     )
 
     # Both should work but may produce different linear positions
-    assert hasattr(position_df_1, 'linear_position')
-    assert hasattr(position_df_2, 'linear_position')
+    assert hasattr(position_df_1, "linear_position")
+    assert hasattr(position_df_2, "linear_position")
     assert len(position_df_1) == len(position)
     assert len(position_df_2) == len(position)
 
@@ -237,7 +246,9 @@ class TestCircularTrack:
 
         # Each node should connect to exactly 2 others (forming a circle)
         degrees = [circular_track.degree(node) for node in circular_track.nodes]
-        assert all(deg == 2 for deg in degrees), "All nodes should have degree 2 in circular track"
+        assert all(
+            deg == 2 for deg in degrees
+        ), "All nodes should have degree 2 in circular track"
 
     def test_circular_track_linearization(self, circular_track):
         """Test linearization on circular track."""
@@ -252,8 +263,11 @@ class TestCircularTrack:
         # Create edge order for linearization
         n_nodes = len(circular_track.nodes)
         edge_order = np.stack(
-            (np.roll(np.arange(n_nodes - 1, -1, -1), 1), np.arange(n_nodes - 1, -1, -1)),
-            axis=1
+            (
+                np.roll(np.arange(n_nodes - 1, -1, -1), 1),
+                np.arange(n_nodes - 1, -1, -1),
+            ),
+            axis=1,
         )
 
         position_df = get_linearized_position(
@@ -263,9 +277,13 @@ class TestCircularTrack:
             edge_order=edge_order,
         )
 
-        assert hasattr(position_df, 'linear_position'), "Result should have linear_position"
+        assert hasattr(
+            position_df, "linear_position"
+        ), "Result should have linear_position"
         assert len(position_df) == len(position), "Output length should match input"
-        assert position_df.linear_position.notna().all(), "All positions should be non-null"
+        assert (
+            position_df.linear_position.notna().all()
+        ), "All positions should be non-null"
 
 
 class TestWTrack:
@@ -278,17 +296,23 @@ class TestWTrack:
 
         # Node 5 should be the central hub connected to nodes 0, 1, and 4
         assert w_track.degree(5) == 3, "Central node should have degree 3"
-        assert set(w_track.neighbors(5)) == {0, 1, 4}, "Central node should connect to nodes 0, 1, 4"
+        assert set(w_track.neighbors(5)) == {
+            0,
+            1,
+            4,
+        }, "Central node should connect to nodes 0, 1, 4"
 
     def test_w_track_linearization(self, w_track):
         """Test linearization on W-shaped track with custom parameters."""
         # Create test position data
         x = np.linspace(0, 30, num=30)
-        position = np.concatenate([
-            np.stack((np.zeros_like(x), x[::-1]), axis=1),  # left vertical
-            np.stack((x, np.zeros_like(x)), axis=1),        # bottom horizontal
-            np.stack((np.ones_like(x) * 30, x), axis=1),    # right vertical
-        ])
+        position = np.concatenate(
+            [
+                np.stack((np.zeros_like(x), x[::-1]), axis=1),  # left vertical
+                np.stack((x, np.zeros_like(x)), axis=1),  # bottom horizontal
+                np.stack((np.ones_like(x) * 30, x), axis=1),  # right vertical
+            ]
+        )
         position += multivariate_normal(mean=0, cov=0.05).rvs(position.shape)
 
         # Test with custom edge order and spacing
@@ -302,9 +326,13 @@ class TestWTrack:
             edge_order=edge_order,
         )
 
-        assert hasattr(position_df, 'linear_position'), "Result should have linear_position"
+        assert hasattr(
+            position_df, "linear_position"
+        ), "Result should have linear_position"
         assert len(position_df) == len(position), "Output length should match input"
-        assert position_df.linear_position.notna().all(), "All positions should be non-null"
+        assert (
+            position_df.linear_position.notna().all()
+        ), "All positions should be non-null"
 
 
 @pytest.mark.parametrize("use_hmm", [True, False])
@@ -320,8 +348,12 @@ def test_linearization_hmm_modes(simple_rectangular_track, use_hmm):
             use_HMM=use_hmm,
         )
 
-        assert hasattr(position_df, 'linear_position'), f"Result should have linear_position (HMM={use_hmm})"
-        assert len(position_df) == len(position), f"Output length should match input (HMM={use_hmm})"
+        assert hasattr(
+            position_df, "linear_position"
+        ), f"Result should have linear_position (HMM={use_hmm})"
+        assert len(position_df) == len(
+            position
+        ), f"Output length should match input (HMM={use_hmm})"
     except Exception as e:
         if use_hmm and ("numba" in str(e).lower() or "viterbi" in str(e).lower()):
             # HMM mode may have compilation issues - this is a known limitation
@@ -351,7 +383,9 @@ class TestEdgeCases:
 
         empty_position = np.empty((0, 2))
         try:
-            position_df = get_linearized_position(position=empty_position, track_graph=track_graph)
+            position_df = get_linearized_position(
+                position=empty_position, track_graph=track_graph
+            )
             assert len(position_df) == 0, "Empty input should produce empty output"
         except (ValueError, IndexError):
             # Empty position data may not be supported - this is acceptable
@@ -364,10 +398,14 @@ class TestEdgeCases:
         track_graph = make_track_graph(node_positions, edges)
 
         single_position = np.array([[0.5, 0]])
-        position_df = get_linearized_position(position=single_position, track_graph=track_graph)
+        position_df = get_linearized_position(
+            position=single_position, track_graph=track_graph
+        )
 
         assert len(position_df) == 1, "Single input should produce single output"
-        assert hasattr(position_df, 'linear_position'), "Result should have linear_position attribute"
+        assert hasattr(
+            position_df, "linear_position"
+        ), "Result should have linear_position attribute"
 
 
 class TestEdgeOrderParameter:
@@ -382,15 +420,20 @@ class TestEdgeOrderParameter:
         edge_order_2 = [(1, 2), (1, 0), (0, 3)]  # Different order
 
         pos_df_1 = get_linearized_position(
-            position=position, track_graph=simple_rectangular_track, edge_order=edge_order_1
+            position=position,
+            track_graph=simple_rectangular_track,
+            edge_order=edge_order_1,
         )
         pos_df_2 = get_linearized_position(
-            position=position, track_graph=simple_rectangular_track, edge_order=edge_order_2
+            position=position,
+            track_graph=simple_rectangular_track,
+            edge_order=edge_order_2,
         )
 
         # Should produce different linear positions for same input
-        assert not np.allclose(pos_df_1.linear_position.values, pos_df_2.linear_position.values), \
-            "Different edge orders should produce different linear positions"
+        assert not np.allclose(
+            pos_df_1.linear_position.values, pos_df_2.linear_position.values
+        ), "Different edge orders should produce different linear positions"
 
     def test_edge_order_reversed_edges(self, simple_rectangular_track):
         """Test edge_order with reversed edge directions."""
@@ -401,17 +444,27 @@ class TestEdgeOrderParameter:
         edge_order_reversed = [(1, 0), (2, 1), (3, 0)]
 
         pos_df_forward = get_linearized_position(
-            position=position, track_graph=simple_rectangular_track, edge_order=edge_order_forward
+            position=position,
+            track_graph=simple_rectangular_track,
+            edge_order=edge_order_forward,
         )
         pos_df_reversed = get_linearized_position(
-            position=position, track_graph=simple_rectangular_track, edge_order=edge_order_reversed
+            position=position,
+            track_graph=simple_rectangular_track,
+            edge_order=edge_order_reversed,
         )
 
-        assert hasattr(pos_df_forward, 'linear_position'), "Forward edge order should work"
-        assert hasattr(pos_df_reversed, 'linear_position'), "Reversed edge order should work"
+        assert hasattr(
+            pos_df_forward, "linear_position"
+        ), "Forward edge order should work"
+        assert hasattr(
+            pos_df_reversed, "linear_position"
+        ), "Reversed edge order should work"
 
     @pytest.mark.parametrize("shuffle_seed", [42, 123, 456])
-    def test_edge_order_random_permutations(self, simple_rectangular_track, shuffle_seed):
+    def test_edge_order_random_permutations(
+        self, simple_rectangular_track, shuffle_seed
+    ):
         """Test edge_order with random permutations."""
         np.random.seed(shuffle_seed)
         position = np.array([[15, 0], [15, 15]])
@@ -422,10 +475,14 @@ class TestEdgeOrderParameter:
         np.random.shuffle(shuffled_edges)
 
         pos_df = get_linearized_position(
-            position=position, track_graph=simple_rectangular_track, edge_order=shuffled_edges
+            position=position,
+            track_graph=simple_rectangular_track,
+            edge_order=shuffled_edges,
         )
 
-        assert hasattr(pos_df, 'linear_position'), f"Shuffled edge order (seed {shuffle_seed}) should work"
+        assert hasattr(
+            pos_df, "linear_position"
+        ), f"Shuffled edge order (seed {shuffle_seed}) should work"
         assert len(pos_df) == len(position), "Output length should match input"
 
     def test_edge_order_subset_of_edges(self):
@@ -444,7 +501,7 @@ class TestEdgeOrderParameter:
             position=position, track_graph=track_graph, edge_order=edge_order_subset
         )
 
-        assert hasattr(pos_df, 'linear_position'), "Subset edge order should work"
+        assert hasattr(pos_df, "linear_position"), "Subset edge order should work"
 
     def test_edge_order_validation_invalid_edges(self, simple_rectangular_track):
         """Test that invalid edges in edge_order raise appropriate errors."""
@@ -457,7 +514,7 @@ class TestEdgeOrderParameter:
             get_linearized_position(
                 position=position,
                 track_graph=simple_rectangular_track,
-                edge_order=invalid_edge_order
+                edge_order=invalid_edge_order,
             )
 
     def test_edge_order_none_uses_default(self, simple_rectangular_track):
@@ -475,7 +532,7 @@ class TestEdgeOrderParameter:
         np.testing.assert_allclose(
             pos_df_none.linear_position.values,
             pos_df_default.linear_position.values,
-            err_msg="edge_order=None should match default behavior"
+            err_msg="edge_order=None should match default behavior",
         )
 
 
@@ -490,18 +547,21 @@ class TestEdgeSpacingParameter:
         pos_df = get_linearized_position(
             position=position,
             track_graph=simple_rectangular_track,
-            edge_spacing=spacing_value
+            edge_spacing=spacing_value,
         )
 
-        assert hasattr(pos_df, 'linear_position'), f"edge_spacing={spacing_value} should work"
+        assert hasattr(
+            pos_df, "linear_position"
+        ), f"edge_spacing={spacing_value} should work"
 
         if spacing_value > 0:
             # With spacing, max position should be higher
             pos_no_spacing = get_linearized_position(
                 position=position, track_graph=simple_rectangular_track, edge_spacing=0
             )
-            assert pos_df.linear_position.max() >= pos_no_spacing.linear_position.max(), \
-                "Positive spacing should increase maximum linear position"
+            assert (
+                pos_df.linear_position.max() >= pos_no_spacing.linear_position.max()
+            ), "Positive spacing should increase maximum linear position"
 
     def test_edge_spacing_list_values(self, simple_rectangular_track):
         """Test edge_spacing with list of different values."""
@@ -513,10 +573,10 @@ class TestEdgeSpacingParameter:
         pos_df = get_linearized_position(
             position=position,
             track_graph=simple_rectangular_track,
-            edge_spacing=edge_spacing_list
+            edge_spacing=edge_spacing_list,
         )
 
-        assert hasattr(pos_df, 'linear_position'), "List edge_spacing should work"
+        assert hasattr(pos_df, "linear_position"), "List edge_spacing should work"
 
     def test_edge_spacing_list_validation(self, simple_rectangular_track):
         """Test validation of edge_spacing list length."""
@@ -529,7 +589,7 @@ class TestEdgeSpacingParameter:
             get_linearized_position(
                 position=position,
                 track_graph=simple_rectangular_track,
-                edge_spacing=invalid_spacing
+                edge_spacing=invalid_spacing,
             )
 
     def test_edge_spacing_zero_vs_positive(self, simple_rectangular_track):
@@ -549,16 +609,23 @@ class TestEdgeSpacingParameter:
         max_positive = pos_df_positive.linear_position.max()
 
         # At minimum, the range should be different or potentially larger with spacing
-        assert max_positive >= max_zero, \
-            f"Positive spacing should not decrease max position: {max_zero} -> {max_positive}"
+        assert (
+            max_positive >= max_zero
+        ), f"Positive spacing should not decrease max position: {max_zero} -> {max_positive}"
 
         # More robust test: check that the spacing parameter affects the results
-        total_range_zero = pos_df_zero.linear_position.max() - pos_df_zero.linear_position.min()
-        total_range_positive = pos_df_positive.linear_position.max() - pos_df_positive.linear_position.min()
+        total_range_zero = (
+            pos_df_zero.linear_position.max() - pos_df_zero.linear_position.min()
+        )
+        total_range_positive = (
+            pos_df_positive.linear_position.max()
+            - pos_df_positive.linear_position.min()
+        )
 
         # The range might change due to spacing effects
-        assert total_range_positive >= total_range_zero * 0.9, \
-            "Positive spacing should maintain reasonable position range"
+        assert (
+            total_range_positive >= total_range_zero * 0.9
+        ), "Positive spacing should maintain reasonable position range"
 
     def test_edge_spacing_negative_values(self, simple_rectangular_track):
         """Test behavior with negative edge spacing."""
@@ -567,21 +634,24 @@ class TestEdgeSpacingParameter:
         # Some implementations might allow negative spacing (overlapping segments)
         try:
             pos_df = get_linearized_position(
-                position=position,
-                track_graph=simple_rectangular_track,
-                edge_spacing=-5
+                position=position, track_graph=simple_rectangular_track, edge_spacing=-5
             )
-            assert hasattr(pos_df, 'linear_position'), "Negative spacing might be supported"
+            assert hasattr(
+                pos_df, "linear_position"
+            ), "Negative spacing might be supported"
         except (ValueError, AssertionError):
             # Negative spacing might not be allowed - this is acceptable
             pass
 
-    @pytest.mark.parametrize("edge_spacing", [
-        [0, 0],      # No spacing
-        [10, 0],     # Spacing only after first edge
-        [0, 20],     # Spacing only after second edge
-        [5, 15],     # Different spacing values
-    ])
+    @pytest.mark.parametrize(
+        "edge_spacing",
+        [
+            [0, 0],  # No spacing
+            [10, 0],  # Spacing only after first edge
+            [0, 20],  # Spacing only after second edge
+            [5, 15],  # Different spacing values
+        ],
+    )
     def test_edge_spacing_list_variations(self, simple_rectangular_track, edge_spacing):
         """Test various edge_spacing list configurations."""
         position = np.array([[5, 0], [15, 0]])
@@ -589,10 +659,12 @@ class TestEdgeSpacingParameter:
         pos_df = get_linearized_position(
             position=position,
             track_graph=simple_rectangular_track,
-            edge_spacing=edge_spacing
+            edge_spacing=edge_spacing,
         )
 
-        assert hasattr(pos_df, 'linear_position'), f"edge_spacing={edge_spacing} should work"
+        assert hasattr(
+            pos_df, "linear_position"
+        ), f"edge_spacing={edge_spacing} should work"
 
     def test_edge_spacing_affects_position_calculations(self):
         """Test that edge_spacing correctly affects position calculations."""
@@ -612,12 +684,15 @@ class TestEdgeSpacingParameter:
 
         # Expected: first point should be same, second should be shifted by spacing
         expected_shift = 5  # The spacing value
-        actual_shift = (pos_df_with_spacing.linear_position.iloc[1] -
-                       pos_df_no_spacing.linear_position.iloc[1])
+        actual_shift = (
+            pos_df_with_spacing.linear_position.iloc[1]
+            - pos_df_no_spacing.linear_position.iloc[1]
+        )
 
         # Should be approximately the spacing value
-        assert abs(actual_shift - expected_shift) < 1e-10, \
-            f"Second position should shift by spacing amount: expected {expected_shift}, got {actual_shift}"
+        assert (
+            abs(actual_shift - expected_shift) < 1e-10
+        ), f"Second position should shift by spacing amount: expected {expected_shift}, got {actual_shift}"
 
 
 class TestEdgeMapParameter:
@@ -631,15 +706,16 @@ class TestEdgeMapParameter:
         edge_map = {0: 10, 1: 11, 2: 12}  # Remap to different IDs
 
         pos_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=edge_map
+            position=position, track_graph=simple_rectangular_track, edge_map=edge_map
         )
 
-        assert hasattr(pos_df, 'track_segment_id'), "Should have track_segment_id column"
+        assert hasattr(
+            pos_df, "track_segment_id"
+        ), "Should have track_segment_id column"
         # The track_segment_id should use the remapped values
-        assert pos_df.track_segment_id.iloc[0] in edge_map.values(), \
-            "track_segment_id should use remapped values"
+        assert (
+            pos_df.track_segment_id.iloc[0] in edge_map.values()
+        ), "track_segment_id should use remapped values"
 
     def test_edge_map_identity_mapping(self, simple_rectangular_track):
         """Test edge_map with identity mapping (maps to same values)."""
@@ -649,21 +725,17 @@ class TestEdgeMapParameter:
         edge_map = {0: 0, 1: 1, 2: 2}
 
         pos_df_with_map = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=edge_map
+            position=position, track_graph=simple_rectangular_track, edge_map=edge_map
         )
         pos_df_without_map = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=None
+            position=position, track_graph=simple_rectangular_track, edge_map=None
         )
 
         # Should produce identical results
         np.testing.assert_array_equal(
             pos_df_with_map.track_segment_id.values,
             pos_df_without_map.track_segment_id.values,
-            err_msg="Identity edge_map should produce same results as no mapping"
+            err_msg="Identity edge_map should produce same results as no mapping",
         )
 
     def test_edge_map_validation_invalid_keys(self, simple_rectangular_track):
@@ -676,31 +748,28 @@ class TestEdgeMapParameter:
         pos_df = get_linearized_position(
             position=position,
             track_graph=simple_rectangular_track,
-            edge_map=invalid_edge_map
+            edge_map=invalid_edge_map,
         )
 
         # Should still work (invalid keys ignored)
-        assert hasattr(pos_df, 'linear_position'), "Invalid edge_map keys should be ignored"
+        assert hasattr(
+            pos_df, "linear_position"
+        ), "Invalid edge_map keys should be ignored"
 
     def test_edge_map_none_vs_no_parameter(self, simple_rectangular_track):
         """Test that edge_map=None is equivalent to not providing edge_map."""
         position = np.array([[15, 0]])
 
         pos_df_none = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=None
+            position=position, track_graph=simple_rectangular_track, edge_map=None
         )
         pos_df_default = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track
+            position=position, track_graph=simple_rectangular_track
         )
 
         # Should be identical
         pd.testing.assert_frame_equal(
-            pos_df_none, pos_df_default,
-            check_exact=False,
-            rtol=1e-10
+            pos_df_none, pos_df_default, check_exact=False, rtol=1e-10
         )
 
     def test_edge_map_partial_mapping(self, simple_rectangular_track):
@@ -711,34 +780,33 @@ class TestEdgeMapParameter:
         edge_map = {0: 100, 2: 200}  # Don't map edge ID 1
 
         pos_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=edge_map
+            position=position, track_graph=simple_rectangular_track, edge_map=edge_map
         )
 
-        assert hasattr(pos_df, 'track_segment_id'), "Should have track_segment_id"
+        assert hasattr(pos_df, "track_segment_id"), "Should have track_segment_id"
         unique_ids = set(pos_df.track_segment_id.unique())
 
         # Should contain both mapped and unmapped values
         expected_ids = {100, 1, 200}  # 100 (mapped 0), 1 (unmapped), 200 (mapped 2)
-        assert unique_ids.issubset(expected_ids), f"Expected IDs in {expected_ids}, got {unique_ids}"
+        assert unique_ids.issubset(
+            expected_ids
+        ), f"Expected IDs in {expected_ids}, got {unique_ids}"
 
     def test_edge_map_with_string_values(self, simple_rectangular_track):
         """Test edge_map with string target values."""
         position = np.array([[15, 0]])
 
         # Map to string values
-        edge_map = {0: 'segment_A', 1: 'segment_B', 2: 'segment_C'}
+        edge_map = {0: "segment_A", 1: "segment_B", 2: "segment_C"}
         pos_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=edge_map
+            position=position, track_graph=simple_rectangular_track, edge_map=edge_map
         )
 
-        assert hasattr(pos_df, 'track_segment_id'), "Should have track_segment_id"
+        assert hasattr(pos_df, "track_segment_id"), "Should have track_segment_id"
         # Should use string segment IDs
-        assert pos_df.track_segment_id.iloc[0] in edge_map.values(), \
-            "Should use string segment IDs from edge_map"
+        assert (
+            pos_df.track_segment_id.iloc[0] in edge_map.values()
+        ), "Should use string segment IDs from edge_map"
 
     def test_edge_map_bug_documentation(self, simple_rectangular_track):
         """
@@ -773,9 +841,7 @@ class TestEdgeMapParameter:
 
         # This WILL fail with IndexError: index 999 is out of bounds for axis 1 with size 3
         pos_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            edge_map=edge_map
+            position=position, track_graph=simple_rectangular_track, edge_map=edge_map
         )
 
         # If the bug is fixed, this should pass
@@ -798,11 +864,11 @@ class TestEdgeParameterIntegration:
             track_graph=simple_rectangular_track,
             edge_order=edge_order,
             edge_spacing=edge_spacing,
-            edge_map=edge_map
+            edge_map=edge_map,
         )
 
-        assert hasattr(pos_df, 'linear_position'), "All parameters together should work"
-        assert hasattr(pos_df, 'track_segment_id'), "Should have mapped segment IDs"
+        assert hasattr(pos_df, "linear_position"), "All parameters together should work"
+        assert hasattr(pos_df, "track_segment_id"), "Should have mapped segment IDs"
 
         # Check that mapping was applied
         unique_ids = set(pos_df.track_segment_id.unique())
@@ -828,11 +894,11 @@ class TestEdgeParameterIntegration:
             position=position,
             track_graph=circular_track,
             edge_order=edge_order,
-            edge_spacing=edge_spacing
+            edge_spacing=edge_spacing,
         )
 
         assert len(pos_df) == len(position), "Should handle all positions"
-        assert hasattr(pos_df, 'linear_position'), "Should have linear positions"
+        assert hasattr(pos_df, "linear_position"), "Should have linear positions"
 
     def test_edge_parameters_consistency_check(self):
         """Test that edge parameter combinations produce consistent results."""
@@ -848,23 +914,24 @@ class TestEdgeParameterIntegration:
             position=position,
             track_graph=track_graph,
             edge_order=[(0, 1), (1, 2)],
-            edge_spacing=0
+            edge_spacing=0,
         )
 
         pos_df_2 = get_linearized_position(
             position=position,
             track_graph=track_graph,
             edge_order=[(1, 2), (0, 1)],  # Reversed order
-            edge_spacing=0
+            edge_spacing=0,
         )
 
         # Should both work but produce different linear positions
-        assert hasattr(pos_df_1, 'linear_position'), "First configuration should work"
-        assert hasattr(pos_df_2, 'linear_position'), "Second configuration should work"
+        assert hasattr(pos_df_1, "linear_position"), "First configuration should work"
+        assert hasattr(pos_df_2, "linear_position"), "Second configuration should work"
 
         # Results should be different due to different ordering
-        assert not np.allclose(pos_df_1.linear_position.values, pos_df_2.linear_position.values), \
-            "Different edge orders should produce different results"
+        assert not np.allclose(
+            pos_df_1.linear_position.values, pos_df_2.linear_position.values
+        ), "Different edge orders should produce different results"
 
     @pytest.mark.parametrize("combine_mode", ["all_custom", "mixed_defaults"])
     def test_edge_parameters_robustness(self, simple_rectangular_track, combine_mode):
@@ -874,27 +941,27 @@ class TestEdgeParameterIntegration:
         if combine_mode == "all_custom":
             # All parameters custom
             kwargs = {
-                'edge_order': [(2, 1), (1, 0), (0, 3)],
-                'edge_spacing': [8, 12],
-                'edge_map': {0: 50, 1: 51, 2: 52}
+                "edge_order": [(2, 1), (1, 0), (0, 3)],
+                "edge_spacing": [8, 12],
+                "edge_map": {0: 50, 1: 51, 2: 52},
             }
         else:  # mixed_defaults
             # Some parameters custom, others default
             kwargs = {
-                'edge_order': [(0, 1), (0, 3), (1, 2)],
-                'edge_spacing': 0,  # Default
-                'edge_map': None   # Default
+                "edge_order": [(0, 1), (0, 3), (1, 2)],
+                "edge_spacing": 0,  # Default
+                "edge_map": None,  # Default
             }
 
         pos_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            **kwargs
+            position=position, track_graph=simple_rectangular_track, **kwargs
         )
 
-        assert hasattr(pos_df, 'linear_position'), f"Mode {combine_mode} should work"
+        assert hasattr(pos_df, "linear_position"), f"Mode {combine_mode} should work"
         assert len(pos_df) == len(position), "Should process all positions"
-        assert pos_df.linear_position.notna().all(), "Should have valid linear positions"
+        assert (
+            pos_df.linear_position.notna().all()
+        ), "Should have valid linear positions"
 
 
 class TestTrackGraphProperties:
@@ -903,19 +970,27 @@ class TestTrackGraphProperties:
     def test_edge_distance_computation(self, simple_rectangular_track):
         """Test that edge distances are computed correctly."""
         for edge in simple_rectangular_track.edges:
-            assert 'distance' in simple_rectangular_track.edges[edge], f"Edge {edge} should have distance"
-            assert simple_rectangular_track.edges[edge]['distance'] > 0, f"Edge {edge} distance should be positive"
+            assert (
+                "distance" in simple_rectangular_track.edges[edge]
+            ), f"Edge {edge} should have distance"
+            assert (
+                simple_rectangular_track.edges[edge]["distance"] > 0
+            ), f"Edge {edge} distance should be positive"
 
     def test_node_position_storage(self, simple_rectangular_track):
         """Test that node positions are stored correctly."""
         expected_positions = [(0, 0), (30, 0), (30, 30), (0, 30)]
         for i, expected_pos in enumerate(expected_positions):
-            actual_pos = simple_rectangular_track.nodes[i]['pos']
-            assert actual_pos == expected_pos, f"Node {i} should have position {expected_pos}"
+            actual_pos = simple_rectangular_track.nodes[i]["pos"]
+            assert (
+                actual_pos == expected_pos
+            ), f"Node {i} should have position {expected_pos}"
 
     def test_edge_id_assignment(self, simple_rectangular_track):
         """Test that edges have proper ID assignment."""
         for edge in simple_rectangular_track.edges:
             edge_data = simple_rectangular_track.edges[edge]
-            assert 'edge_id' in edge_data, f"Edge {edge} should have edge_id"
-            assert isinstance(edge_data['edge_id'], int), f"Edge {edge} ID should be integer"
+            assert "edge_id" in edge_data, f"Edge {edge} should have edge_id"
+            assert isinstance(
+                edge_data["edge_id"], int
+            ), f"Edge {edge} ID should be integer"
