@@ -14,6 +14,8 @@ track_linearization is a Python package for mapping 2D trajectories to 1D using 
   - `__init__.py`: Package initialization with main API exports
   - `tests/`: Test suite with comprehensive coverage
 - `notebooks/`: Jupyter notebooks for examples and analysis
+  - `track_linearization_tutorial.ipynb`: **Comprehensive pedagogical tutorial** (recommended starting point)
+  - `test_linearization.ipynb`: Original test examples
 - `build/`: Build artifacts (generated)
 - `htmlcov/`: Test coverage reports (generated)
 

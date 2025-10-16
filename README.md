@@ -41,6 +41,8 @@ pip install track_linearization[opt]  # Includes numba, ipympl
 
 ## Quick Start
 
+**📚 For a comprehensive tutorial with detailed examples, see [notebooks/track_linearization_tutorial.ipynb](notebooks/track_linearization_tutorial.ipynb)**
+
 ### Basic Example: Linear Track
 
 ```python
@@ -326,11 +328,23 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Learning Resources
+
+### Tutorial Notebook
+📚 **[Interactive Tutorial](notebooks/track_linearization_tutorial.ipynb)** - A comprehensive, pedagogically-designed notebook covering:
+- Simple to complex track examples (linear, L-shaped, circular, W-track)
+- Edge mapping for behavioral analysis (T-maze example)
+- HMM-based classification for noisy data
+- Best practices and troubleshooting tips
+
+Perfect for scientists new to the package or computational spatial analysis!
+
 ## Support
 
 - **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/LorenFrankLab/track_linearization/issues)
 - **Documentation**: See docstrings in the code for detailed API documentation
-- **Examples**: Check the `notebooks/` directory for Jupyter notebook examples
+- **Tutorial**: Start with [track_linearization_tutorial.ipynb](notebooks/track_linearization_tutorial.ipynb)
+- **Examples**: Check the `notebooks/` directory for additional Jupyter notebook examples
 
 ## Related Projects
 
