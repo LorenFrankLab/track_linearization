@@ -613,8 +613,45 @@ if NUMBA_AVAILABLE:
         state_transition: np.ndarray,
         likelihood: np.ndarray,
     ) -> np.ndarray:
-        # Calls the Python version, which Numba will JIT compile
-        return viterbi_no_numba(initial_conditions, state_transition, likelihood)
+        """Find the most likely sequence of paths using the Viterbi algorithm (numba version).
+
+        This is the numba-compiled version that duplicates the logic from viterbi_no_numba.
+        """
+        LOG_EPS = 1e-16
+        log_likelihood = np.log(likelihood.copy())
+        log_state_transition = np.log(state_transition.copy() + LOG_EPS)
+
+        n_time, n_states = log_likelihood.shape
+        posterior_prob = np.zeros((n_time, n_states))
+        path_pointers = np.zeros((n_time, n_states), dtype=np.int64)
+
+        # initialization
+        posterior_prob[0] = np.log(initial_conditions + LOG_EPS) + log_likelihood[0]
+
+        # recursion
+        for time_ind in range(1, n_time):
+            prior = (
+                posterior_prob[time_ind - 1][:, np.newaxis] + log_state_transition[time_ind]
+            )
+
+            for state_ind in range(n_states):  # current state `j`
+                path_pointers[time_ind, state_ind] = np.argmax(prior[:, state_ind])
+                posterior_prob[time_ind, state_ind] = (
+                    np.max(prior[:, state_ind]) + log_likelihood[time_ind, state_ind]
+                )
+
+        # termination
+        most_probable_state_ind = np.zeros((n_time,), dtype=np.float64)
+        if n_time > 0:
+            most_probable_state_ind[n_time - 1] = np.argmax(posterior_prob[n_time - 1])
+
+            # path back-tracking
+            for time_ind in range(n_time - 2, -1, -1):
+                most_probable_state_ind[time_ind] = path_pointers[
+                    time_ind + 1, int(most_probable_state_ind[time_ind + 1])
+                ]
+
+        return most_probable_state_ind.astype(np.int64)
 
 else:
     viterbi = viterbi_no_numba
