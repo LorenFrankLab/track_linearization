@@ -920,8 +920,22 @@ def get_linearized_position(
         Range 0.0-1.0, where larger values increase the probability of staying on
         the same segment. Default is 0.1.
     edge_map : dict, optional
-        Maps edge IDs to new values in the output. Use this to merge or relabel segments.
-        Example: {0: 10, 1: 10, 2: 20} merges segments 0 and 1 into segment 10.
+        Maps edge IDs to new segment IDs, enabling merging or relabeling of track segments.
+        This is useful for treating different spatial paths as equivalent behavioral segments.
+
+        **Merging behavior**: When multiple edges map to the same target ID, they are merged
+        into a unified linear coordinate system. Positions on merged edges are projected onto
+        their original physical edges, but their linear positions are calculated from a shared
+        reference point. This means:
+        - Different 2D paths can have the same 1D linear position
+        - Positions N units from the start of any merged edge will have the same linear position
+        - Useful for T-mazes, figure-8 tracks, or symmetric choice points
+
+        Examples:
+        - Relabeling: {0: 100, 1: 101, 2: 102} changes segment IDs without merging
+        - Merging: {0: 10, 1: 10, 2: 20} merges edges 0 & 1 into segment 10
+        - String labels: {0: 'left_arm', 1: 'right_arm', 2: 'center'} for semantic names
+
         Default is None (no remapping).
 
     Returns
@@ -1019,22 +1033,74 @@ def get_linearized_position(
         track_segments = get_track_segments_from_graph(track_graph)
         track_segment_id = find_nearest_segment(track_segments, position)
 
-    # Calculate linear position using original edge IDs (before mapping)
-    (
-        linear_position,
-        projected_x_position,
-        projected_y_position,
-    ) = _calculate_linear_position(
-        track_graph, position, track_segment_id, edge_order, edge_spacing
-    )
-
-    # Apply edge_map to output track_segment_id only (after internal calculations)
-    # Convert to object dtype if edge_map contains non-integer values (e.g., strings)
+    # Apply edge_map to create merged edge_order and spacing
+    # This ensures merged edges share the same linear position space
     if edge_map is not None:
-        # Check if edge_map contains non-integer values
+        # First, calculate linear positions using original edge_order
+        # This ensures positions are projected onto their actual physical edges
+        (
+            linear_position,
+            projected_x_position,
+            projected_y_position,
+        ) = _calculate_linear_position(
+            track_graph, position, track_segment_id, edge_order, edge_spacing
+        )
+
+        # Now apply the edge_map to adjust linear positions for merged edges
+        # Merged edges should share the same linear coordinate system
+
+        # Calculate starting linear positions for each target in merged space
+        target_start_positions = {}
+        cumulative_position = 0.0
+
+        if isinstance(edge_spacing, list):
+            spacing_list = edge_spacing
+        else:
+            spacing_list = [edge_spacing] * (len(edge_order) - 1) if len(edge_order) > 1 else []
+
+        for i, edge in enumerate(edge_order):
+            edge_id = track_graph.edges[edge]["edge_id"]
+            target = edge_map.get(edge_id, edge_id)
+
+            # Only record start position for first occurrence of each target
+            if target not in target_start_positions:
+                target_start_positions[target] = cumulative_position
+                # Add this edge's length and spacing to cumulative position
+                cumulative_position += track_graph.edges[edge]["distance"]
+                if i < len(spacing_list):
+                    cumulative_position += spacing_list[i]
+
+        # Adjust linear positions based on merged coordinate systems
+        # For each position, find its offset within its original edge,
+        # then add that to the merged edge's starting position
+        adjusted_linear_position = np.zeros_like(linear_position)
+
+        # Build lookup from edge_id to starting position
+        edge_id_to_start_pos = {}
+        cumulative = 0.0
+        for i, edge in enumerate(edge_order):
+            edge_id = track_graph.edges[edge]["edge_id"]
+            edge_id_to_start_pos[edge_id] = cumulative
+            cumulative += track_graph.edges[edge]["distance"]
+            if i < len(spacing_list):
+                cumulative += spacing_list[i]
+
+        for i in range(len(track_segment_id)):
+            orig_edge_id = int(track_segment_id[i]) if not np.isnan(track_segment_id[i]) else 0
+            orig_start = edge_id_to_start_pos.get(orig_edge_id, 0.0)
+            offset_within_edge = linear_position[i] - orig_start
+
+            target = edge_map.get(orig_edge_id, orig_edge_id)
+            new_start = target_start_positions.get(target, orig_start)
+            adjusted_linear_position[i] = new_start + offset_within_edge
+
+        linear_position = adjusted_linear_position
+
+        # Output uses the target segment IDs from edge_map
+        # Check if edge_map contains non-integer values for dtype handling
         has_non_int_values = any(not isinstance(v, (int, np.integer)) for v in edge_map.values())
         if has_non_int_values:
-            # Convert to object array to support mixed types
+            # Convert to object dtype to support mixed types
             output_track_segment_id = np.empty(len(track_segment_id), dtype=object)
             output_track_segment_id[:] = track_segment_id
         else:
@@ -1044,6 +1110,14 @@ def get_linearized_position(
         for cur_edge, new_edge in edge_map.items():
             output_track_segment_id[track_segment_id == cur_edge] = new_edge
     else:
+        # No mapping - use original edge_order
+        (
+            linear_position,
+            projected_x_position,
+            projected_y_position,
+        ) = _calculate_linear_position(
+            track_graph, position, track_segment_id, edge_order, edge_spacing
+        )
         output_track_segment_id = track_segment_id
 
     return pd.DataFrame(
