@@ -1,5 +1,9 @@
 # flake8: noqa
-from track_linearization.core import get_linearized_position, validate_track_graph
+from track_linearization.core import (
+    get_linearized_position,
+    project_1d_to_2d,
+    validate_track_graph,
+)
 from track_linearization.utils import (
     infer_edge_layout,
     make_actual_vs_linearized_position_movie,
