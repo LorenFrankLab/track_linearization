@@ -856,11 +856,13 @@ class TestEdgeMapParameter:
         track_graph = make_track_graph(node_positions, edges)
 
         # Positions 5 units from the start of each edge
-        position = np.array([
-            [5, 0],   # Edge 0: 5 units from x=0
-            [15, 0],  # Edge 1: 5 units from x=10
-            [25, 0],  # Edge 2: 5 units from x=20
-        ])
+        position = np.array(
+            [
+                [5, 0],  # Edge 0: 5 units from x=0
+                [15, 0],  # Edge 1: 5 units from x=10
+                [25, 0],  # Edge 2: 5 units from x=20
+            ]
+        )
 
         # WITH edge_map: merge edges 0 and 1 into segment 0
         edge_map = {0: 0, 1: 0, 2: 2}
@@ -878,7 +880,7 @@ class TestEdgeMapParameter:
         assert np.isclose(
             result_with_map.linear_position.iloc[0],
             result_with_map.linear_position.iloc[1],
-            atol=0.01
+            atol=0.01,
         ), f"Merged edges should have same linear position: {result_with_map.linear_position.iloc[0]} vs {result_with_map.linear_position.iloc[1]}"
 
         # 3. Linear position should be 5.0 (distance from edge start)
@@ -890,11 +892,11 @@ class TestEdgeMapParameter:
         """Test edge_map merging with Y-shaped track (different 2D positions, same linear position)."""
         # Y-shaped track: two arms that merge
         node_positions = [
-            (0, 10),   # Node 0: top of left arm
-            (0, 0),    # Node 1: bottom of left arm
+            (0, 10),  # Node 0: top of left arm
+            (0, 0),  # Node 1: bottom of left arm
             (20, 10),  # Node 2: top of right arm
-            (20, 0),   # Node 3: bottom of right arm
-            (10, 0),   # Node 4: end of merged segment
+            (20, 0),  # Node 3: bottom of right arm
+            (10, 0),  # Node 4: end of merged segment
         ]
         edges = [
             (0, 1),  # Edge 0: left arm (edge_id will be 0)
@@ -904,10 +906,12 @@ class TestEdgeMapParameter:
         track_graph = make_track_graph(node_positions, edges)
 
         # Positions 5 units from start of left and right arms
-        position = np.array([
-            [0, 5],   # Left arm: 5 units down
-            [20, 5],  # Right arm: 5 units down
-        ])
+        position = np.array(
+            [
+                [0, 5],  # Left arm: 5 units down
+                [20, 5],  # Right arm: 5 units down
+            ]
+        )
 
         # Find which edge_ids correspond to left and right arms
         left_arm_id = track_graph.edges[(0, 1)]["edge_id"]
@@ -926,9 +930,7 @@ class TestEdgeMapParameter:
 
         # Both should have the SAME linear position (5.0)
         assert np.isclose(
-            result.linear_position.iloc[0],
-            result.linear_position.iloc[1],
-            atol=0.01
+            result.linear_position.iloc[0], result.linear_position.iloc[1], atol=0.01
         ), f"Y-arms should have same linear position when merged: {result.linear_position.iloc[0]} vs {result.linear_position.iloc[1]}"
 
         assert np.isclose(

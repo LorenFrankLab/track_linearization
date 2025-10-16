@@ -20,7 +20,9 @@ except ImportError:
     NUMBA_AVAILABLE = False
 
 
-def validate_track_graph(track_graph: Graph, edge_order: list[Edge] | None = None) -> None:
+def validate_track_graph(
+    track_graph: Graph, edge_order: list[Edge] | None = None
+) -> None:
     """Validate that track_graph has the required structure for linearization.
 
     Parameters
@@ -1010,7 +1012,10 @@ def get_linearized_position(
     # Warning for extremely large edge_spacing values
     if len(edge_order) > 0:
         max_edge_length = max(track_graph.edges[e]["distance"] for e in edge_order)
-        if isinstance(edge_spacing, (int, float)) and edge_spacing > 10 * max_edge_length:
+        if (
+            isinstance(edge_spacing, (int, float))
+            and edge_spacing > 10 * max_edge_length
+        ):
             warnings.warn(
                 f"edge_spacing ({edge_spacing:.1f}) is very large compared to typical edge length ({max_edge_length:.1f}).\n"
                 f"This may create unexpectedly large gaps in the linearized representation.\n"
@@ -1056,7 +1061,9 @@ def get_linearized_position(
         if isinstance(edge_spacing, list):
             spacing_list = edge_spacing
         else:
-            spacing_list = [edge_spacing] * (len(edge_order) - 1) if len(edge_order) > 1 else []
+            spacing_list = (
+                [edge_spacing] * (len(edge_order) - 1) if len(edge_order) > 1 else []
+            )
 
         for i, edge in enumerate(edge_order):
             edge_id = track_graph.edges[edge]["edge_id"]
@@ -1086,7 +1093,9 @@ def get_linearized_position(
                 cumulative += spacing_list[i]
 
         for i in range(len(track_segment_id)):
-            orig_edge_id = int(track_segment_id[i]) if not np.isnan(track_segment_id[i]) else 0
+            orig_edge_id = (
+                int(track_segment_id[i]) if not np.isnan(track_segment_id[i]) else 0
+            )
             orig_start = edge_id_to_start_pos.get(orig_edge_id, 0.0)
             offset_within_edge = linear_position[i] - orig_start
 
@@ -1098,7 +1107,9 @@ def get_linearized_position(
 
         # Output uses the target segment IDs from edge_map
         # Check if edge_map contains non-integer values for dtype handling
-        has_non_int_values = any(not isinstance(v, (int, np.integer)) for v in edge_map.values())
+        has_non_int_values = any(
+            not isinstance(v, (int, np.integer)) for v in edge_map.values()
+        )
         if has_non_int_values:
             # Convert to object dtype to support mixed types
             output_track_segment_id = np.empty(len(track_segment_id), dtype=object)
