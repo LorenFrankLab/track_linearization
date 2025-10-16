@@ -11,6 +11,7 @@ from track_linearization.track_builders import (
     make_plus_maze_track,
     make_rectangular_track,
     make_tmaze_track,
+    make_track_from_image_interactive,
     make_wtrack,
     make_ymaze_track,
 )
