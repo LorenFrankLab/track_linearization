@@ -467,13 +467,13 @@ class TestEdgeOrderParameter:
         self, simple_rectangular_track, shuffle_seed
     ):
         """Test edge_order with random permutations."""
-        np.random.seed(shuffle_seed)
+        rng = np.random.default_rng(shuffle_seed)
         position = np.array([[15, 0], [15, 15]])
 
         # Get all edges and shuffle them
         all_edges = list(simple_rectangular_track.edges)
         shuffled_edges = all_edges.copy()
-        np.random.shuffle(shuffled_edges)
+        rng.shuffle(shuffled_edges)
 
         pos_df = get_linearized_position(
             position=position,
@@ -586,7 +586,7 @@ class TestEdgeSpacingParameter:
         # Wrong length: should be n_edges - 1 = 2, but giving 3
         invalid_spacing = [5, 10, 15]
 
-        with pytest.raises(ValueError, match="edge_spacing.*wrong length"):
+        with pytest.raises(ValueError, match=r"edge_spacing.*wrong length"):
             get_linearized_position(
                 position=position,
                 track_graph=simple_rectangular_track,

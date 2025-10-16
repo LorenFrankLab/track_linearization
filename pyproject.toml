@@ -14,6 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
@@ -21,11 +22,11 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "numpy",
-    "scipy",
-    "matplotlib",
-    "pandas",
-    "dask",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "dask[array]>=2023.5.0",
     "networkx>=3.2.1",
 ]
 dynamic = ["version"]
@@ -35,7 +36,7 @@ dynamic = ["version"]
 "Bug Tracker" = "https://github.com/LorenFrankLab/track_linearization/issues"
 
 [project.optional-dependencies]
-test = ["black", "pytest", "pytest-cov", "jupyter", "nbconvert", "ruff", "mypy"]
+test = ["black", "pytest", "pytest-cov", "jupyter", "nbconvert", "ruff", "mypy", "pandas-stubs"]
 opt = ["numba", "ipympl"]
 dev = [
     "black",
@@ -45,6 +46,7 @@ dev = [
     "nbconvert",
     "ruff",
     "mypy",
+    "pandas-stubs",
     "pre-commit",
 ]
 
@@ -63,23 +65,32 @@ packages = ["src/track_linearization"]
 [tool.ruff]
 target-version = "py310"
 line-length = 88
+src = ["src"]
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "NPY", # numpy-specific rules
+    "PD",  # pandas-vet
+    "RUF", # ruff-specific rules
 ]
 ignore = [
-    "E501", # line too long, handled by black
+    "E501",   # line too long, handled by black
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"] # Ignore unused imports in __init__.py
+"__init__.py" = ["F401"]    # Ignore unused imports in __init__.py
+
+[tool.ruff.lint.isort]
+known-first-party = ["track_linearization"]
+force-single-line = false
+lines-after-imports = 2
 
 [tool.mypy]
 python_version = "3.10"
@@ -95,6 +106,26 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+files = ["src/track_linearization"]
+exclude = ["build", "dist", ".venv", ".eggs"]
+
+# Ignore missing imports for packages without type stubs
+[[tool.mypy.overrides]]
+module = [
+    "networkx.*",
+    "scipy.*",
+    "matplotlib.*",
+    "dask.*",
+    "numba.*",
+]
+ignore_missing_imports = true
+
+# Less strict checking for tests
+[[tool.mypy.overrides]]
+module = "track_linearization.tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_decorators = false
 
 [tool.pytest.ini_options]
 testpaths = ["src/track_linearization/tests"]

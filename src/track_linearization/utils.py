@@ -11,6 +11,7 @@ from track_linearization.core import (
     project_points_to_segment,
 )
 
+
 Edge = tuple[Any, Any]
 
 
@@ -159,7 +160,7 @@ def plot_track_graph(
     make_track_graph : Create a track graph from positions and edges
     """
     if ax is None:
-        fig, ax = plt.subplots(figsize=figsize)
+        _, ax = plt.subplots(figsize=figsize)
     node_position = nx.get_node_attributes(track_graph, "pos")
     nx.draw_networkx_nodes(track_graph, node_position, ax=ax, **kwds)
     for node_id, pos in node_position.items():
@@ -285,7 +286,7 @@ def plot_graph_as_1D(
     if ax is None:
         if figsize is None:
             figsize = (7, 1) if axis == "x" else (1, 7)
-        fig, ax = plt.subplots(figsize=figsize)
+        _, ax = plt.subplots(figsize=figsize)
 
     # If no edge_order is given, then arange edges in the order passed to
     # construct the track graph
@@ -496,18 +497,18 @@ def make_actual_vs_linearized_position_movie(
         Frames per second.
     """
 
-    all_position = position_df.loc[:, ["x_position", "y_position"]].values
-    all_linear_position = position_df.linear_position.values
-    all_time = position_df.index.values / np.timedelta64(1, "s")
+    all_position = position_df.loc[:, ["x_position", "y_position"]].to_numpy()
+    all_linear_position = position_df.linear_position.to_numpy()
+    all_time = position_df.index.to_numpy() / np.timedelta64(1, "s")
 
     if time_slice is None:
         position = all_position
-        track_segment_id = position_df.track_segment_id.values
+        track_segment_id = position_df.track_segment_id.to_numpy()
         linear_position = all_linear_position
         time = all_time
     else:
         position = all_position[time_slice]
-        track_segment_id = position_df.iloc[time_slice].track_segment_id.values
+        track_segment_id = position_df.iloc[time_slice].track_segment_id.to_numpy()
         linear_position = all_linear_position[time_slice]
         time = all_time[time_slice]
 

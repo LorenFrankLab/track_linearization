@@ -10,6 +10,7 @@ import scipy.sparse
 import scipy.stats
 from networkx import Graph
 
+
 Edge = tuple[Any, Any]
 
 try:
@@ -1182,7 +1183,7 @@ def project_1d_to_2d(
     else:
         gaps = np.asarray(edge_spacing, dtype=float)
         if gaps.size != max(0, n_edges - 1):
-            raise ValueError("edge_spacing length must be len(edge_order)‑1")
+            raise ValueError("edge_spacing length must be len(edge_order)-1")
 
     # cumulative start position of each edge
     cumulative = np.concatenate(

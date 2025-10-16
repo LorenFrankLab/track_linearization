@@ -1,4 +1,4 @@
-[![PR Test](https://github.com/LorenFrankLab/track_linearization/actions/workflows/PR-test.yml/badge.svg)](https://github.com/LorenFrankLab/track_linearization/actions/workflows/PR-test.yml)
+[![Test, Build, and Publish](https://github.com/LorenFrankLab/track_linearization/actions/workflows/release.yml/badge.svg)](https://github.com/LorenFrankLab/track_linearization/actions/workflows/release.yml)
 
 # track_linearization
 
