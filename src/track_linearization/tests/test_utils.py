@@ -89,26 +89,20 @@ class TestMakeTrackGraph:
 class TestEdgeOrdering:
     """Group tests for automatic edge ordering functionality."""
 
-    def test_get_auto_linear_edge_order_spacing_basic(self):
+    def test_infer_edge_layout_basic(self):
         """Test basic edge ordering functionality."""
-        if not hasattr(utils, "get_auto_linear_edge_order_spacing"):
-            pytest.skip("get_auto_linear_edge_order_spacing not available")
-
         pos = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], dtype=float)
         edges = [(0, 1), (1, 2)]
         g = utils.make_track_graph(pos, edges)
 
-        order, spacing = utils.get_auto_linear_edge_order_spacing(g, start_node=0)
+        order, spacing = utils.infer_edge_layout(g, start_node=0)
 
         assert len(order) == len(edges), "Order length should match number of edges"
         if hasattr(spacing, "shape") and spacing.size > 0:
             assert np.allclose(spacing, 0.0), "Default spacing should be zero"
 
-    def test_get_auto_linear_edge_order_spacing_circular(self):
+    def test_infer_edge_layout_circular(self):
         """Test automatic edge ordering with circular track."""
-        if not hasattr(utils, "get_auto_linear_edge_order_spacing"):
-            pytest.skip("get_auto_linear_edge_order_spacing not available")
-
         # Simple circular track
         angle = np.linspace(-np.pi, np.pi, num=6, endpoint=False)
         radius = 10
@@ -121,9 +115,7 @@ class TestEdgeOrdering:
 
         track_graph = make_track_graph(node_positions, edges)
 
-        order, spacing = utils.get_auto_linear_edge_order_spacing(
-            track_graph, start_node=0
-        )
+        order, spacing = utils.infer_edge_layout(track_graph, start_node=0)
 
         assert len(order) == len(track_graph.edges), "Order should include all edges"
         assert spacing is not None, "Spacing should be returned"
@@ -319,11 +311,8 @@ class TestPlottingWithEdgeParameters:
 class TestAutoEdgeOrdering:
     """Tests for automatic edge ordering functionality."""
 
-    def test_get_auto_linear_edge_order_spacing_different_start_nodes(self):
+    def test_infer_edge_layout_different_start_nodes(self):
         """Test auto edge ordering with different start nodes."""
-        if not hasattr(utils, "get_auto_linear_edge_order_spacing"):
-            pytest.skip("get_auto_linear_edge_order_spacing not available")
-
         # Create a simple connected track
         node_positions = [(0, 0), (10, 0), (20, 0), (10, 10)]
         edges = [(0, 1), (1, 2), (1, 3)]  # Node 1 is hub
@@ -331,28 +320,21 @@ class TestAutoEdgeOrdering:
 
         # Test different start nodes
         for start_node in [0, 1, 2, 3]:
-            order, spacing = utils.get_auto_linear_edge_order_spacing(
-                track_graph, start_node=start_node
-            )
+            order, spacing = utils.infer_edge_layout(track_graph, start_node=start_node)
 
             assert len(order) == len(
                 track_graph.edges
             ), f"Should include all edges (start={start_node})"
             assert spacing is not None, f"Should return spacing (start={start_node})"
 
-    def test_get_auto_linear_edge_order_spacing_complex_track(self):
+    def test_infer_edge_layout_complex_track(self):
         """Test auto edge ordering with complex W-shaped track."""
-        if not hasattr(utils, "get_auto_linear_edge_order_spacing"):
-            pytest.skip("get_auto_linear_edge_order_spacing not available")
-
         # W-shaped track
         node_positions = [(0, 0), (30, 0), (30, 30), (0, 30), (15, 30), (15, 0)]
         edges = [(3, 0), (0, 5), (4, 5), (5, 1), (1, 2)]
         track_graph = make_track_graph(node_positions, edges)
 
-        order, spacing = utils.get_auto_linear_edge_order_spacing(
-            track_graph, start_node=0
-        )
+        order, spacing = utils.infer_edge_layout(track_graph, start_node=0)
 
         assert len(order) == len(edges), "Should include all W-track edges"
         assert spacing is not None, "Should return spacing for W-track"

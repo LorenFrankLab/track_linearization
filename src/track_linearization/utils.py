@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 
 import matplotlib.animation as animation
@@ -15,7 +16,10 @@ from track_linearization.core import (
 Edge = tuple[Any, Any]
 
 
-def make_track_graph(node_positions: np.ndarray, edges: np.ndarray) -> nx.Graph:
+def make_track_graph(
+    node_positions: np.ndarray | Sequence[tuple[float, ...]],
+    edges: np.ndarray | Sequence[tuple[int, int]],
+) -> nx.Graph:
     """Constructs a graph representation of a 2D track.
 
     This is the recommended way to create track graphs for linearization.
@@ -188,6 +192,78 @@ def plot_track_graph(
     return ax
 
 
+def _plot_linear_segment(
+    ax: plt.Axes,
+    start_pos: float,
+    end_pos: float,
+    other_pos: float,
+    edge: Edge,
+    edge_id: int,
+    axis: str,
+    node_size: int,
+    node_color: str,
+    draw_edge_labels: bool,
+) -> None:
+    """Helper function to plot a single segment in 1D layout.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to plot on.
+    start_pos : float
+        Starting position along the main axis.
+    end_pos : float
+        Ending position along the main axis.
+    other_pos : float
+        Position on the perpendicular axis.
+    edge : tuple
+        Edge tuple (node1, node2).
+    edge_id : int
+        Edge identifier for labeling.
+    axis : str
+        'x' for horizontal or 'y' for vertical.
+    node_size : int
+        Size of node markers.
+    node_color : str
+        Color for node markers.
+    draw_edge_labels : bool
+        Whether to draw edge ID labels.
+    """
+    # Determine coordinate order based on axis
+    if axis == "x":
+        start_coords = (start_pos, other_pos)
+        end_coords = (end_pos, other_pos)
+        line_x = (start_pos, end_pos)
+        line_y = (other_pos, other_pos)
+    else:  # axis == "y"
+        start_coords = (other_pos, start_pos)
+        end_coords = (other_pos, end_pos)
+        line_x = (other_pos, other_pos)
+        line_y = (start_pos, end_pos)
+
+    # Plot start and end nodes
+    ax.scatter(*start_coords, zorder=8, s=node_size, clip_on=False, color=node_color)
+    ax.scatter(*end_coords, zorder=8, s=node_size, clip_on=False, color=node_color)
+
+    # Plot line connecting nodes
+    ax.plot(line_x, line_y, color="black", clip_on=False, zorder=7)
+
+    # Draw edge label if requested
+    if draw_edge_labels:
+        edge_midpoint = start_pos + (end_pos - start_pos) / 2
+        if axis == "x":
+            label_coords = (edge_midpoint, other_pos)
+        else:
+            label_coords = (other_pos, edge_midpoint)
+
+        ax.scatter(*label_coords, color="white", zorder=9, s=node_size, clip_on=False)
+        ax.text(*label_coords, edge_id, ha="center", va="center", zorder=10)
+
+    # Add node labels
+    ax.text(*start_coords, edge[0], ha="center", va="center", zorder=10)
+    ax.text(*end_coords, edge[1], ha="center", va="center", zorder=10)
+
+
 def plot_graph_as_1D(
     track_graph: nx.Graph,
     edge_order: list[Edge] | None = None,
@@ -299,83 +375,37 @@ def plot_graph_as_1D(
             edge_spacing,
         ] * (n_edges - 1)
 
+    # Plot all segments using helper function
+    start_node_linear_position = 0.0
+    end_node_linear_position = 0.0
+
+    for ind, edge in enumerate(edge_order):
+        end_node_linear_position = (
+            start_node_linear_position + track_graph.edges[edge]["distance"]
+        )
+
+        _plot_linear_segment(
+            ax=ax,
+            start_pos=start_node_linear_position,
+            end_pos=end_node_linear_position,
+            other_pos=other_axis_start,
+            edge=edge,
+            edge_id=track_graph.edges[edge]["edge_id"],
+            axis=axis,
+            node_size=node_size,
+            node_color=node_color,
+            draw_edge_labels=draw_edge_labels,
+        )
+
+        try:
+            start_node_linear_position += (
+                track_graph.edges[edge]["distance"] + edge_spacing[ind]
+            )
+        except IndexError:
+            pass
+
+    # Configure axis-specific styling
     if axis == "x":
-        start_node_linear_position = 0.0
-
-        for ind, edge in enumerate(edge_order):
-            end_node_linear_position = (
-                start_node_linear_position + track_graph.edges[edge]["distance"]
-            )
-            ax.scatter(
-                start_node_linear_position,
-                other_axis_start,
-                zorder=8,
-                s=node_size,
-                clip_on=False,
-                color=node_color,
-            )
-            ax.scatter(
-                end_node_linear_position,
-                other_axis_start,
-                zorder=8,
-                s=node_size,
-                clip_on=False,
-                color=node_color,
-            )
-            ax.plot(
-                (start_node_linear_position, end_node_linear_position),
-                (other_axis_start, other_axis_start),
-                color="black",
-                clip_on=False,
-                zorder=7,
-            )
-
-            if draw_edge_labels:
-                edge_midpoint = (
-                    start_node_linear_position
-                    + (end_node_linear_position - start_node_linear_position) / 2
-                )
-                ax.scatter(
-                    edge_midpoint,
-                    other_axis_start,
-                    color="white",
-                    zorder=9,
-                    s=node_size,
-                    clip_on=False,
-                )
-                ax.text(
-                    edge_midpoint,
-                    other_axis_start,
-                    track_graph.edges[edge]["edge_id"],
-                    ha="center",
-                    va="center",
-                    zorder=10,
-                )
-
-            ax.text(
-                start_node_linear_position,
-                other_axis_start,
-                edge[0],
-                ha="center",
-                va="center",
-                zorder=10,
-            )
-            ax.text(
-                end_node_linear_position,
-                other_axis_start,
-                edge[1],
-                ha="center",
-                va="center",
-                zorder=10,
-            )
-
-            try:
-                start_node_linear_position += (
-                    track_graph.edges[edge]["distance"] + edge_spacing[ind]
-                )
-            except IndexError:
-                pass
-
         ax.set_xlim((other_axis_start, end_node_linear_position))
         ax.set_xlabel("Linear Position [cm]")
         ax.spines["top"].set_visible(False)
@@ -383,81 +413,6 @@ def plot_graph_as_1D(
         ax.spines["left"].set_visible(False)
         ax.set_yticks([])
     elif axis == "y":
-        start_node_linear_position = 0.0
-
-        for ind, edge in enumerate(edge_order):
-            end_node_linear_position = (
-                start_node_linear_position + track_graph.edges[edge]["distance"]
-            )
-            ax.scatter(
-                other_axis_start,
-                start_node_linear_position,
-                zorder=8,
-                s=node_size,
-                clip_on=False,
-                color=node_color,
-            )
-            ax.scatter(
-                other_axis_start,
-                end_node_linear_position,
-                zorder=8,
-                s=node_size,
-                clip_on=False,
-                color=node_color,
-            )
-            ax.plot(
-                (other_axis_start, other_axis_start),
-                (start_node_linear_position, end_node_linear_position),
-                color="black",
-                clip_on=False,
-                zorder=7,
-            )
-
-            if draw_edge_labels:
-                edge_midpoint = (
-                    start_node_linear_position
-                    + (end_node_linear_position - start_node_linear_position) / 2
-                )
-                ax.scatter(
-                    other_axis_start,
-                    edge_midpoint,
-                    color="white",
-                    zorder=9,
-                    s=node_size,
-                    clip_on=False,
-                )
-                ax.text(
-                    other_axis_start,
-                    edge_midpoint,
-                    track_graph.edges[edge]["edge_id"],
-                    ha="center",
-                    va="center",
-                    zorder=10,
-                )
-
-            ax.text(
-                other_axis_start,
-                start_node_linear_position,
-                edge[0],
-                ha="center",
-                va="center",
-                zorder=10,
-            )
-            ax.text(
-                other_axis_start,
-                end_node_linear_position,
-                edge[1],
-                ha="center",
-                va="center",
-                zorder=10,
-            )
-
-            try:
-                start_node_linear_position += (
-                    track_graph.edges[edge]["distance"] + edge_spacing[ind]
-                )
-            except IndexError:
-                pass
         ax.set_ylabel("Linear Position [cm]")
 
     if show:

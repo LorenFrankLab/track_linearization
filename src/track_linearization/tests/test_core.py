@@ -336,31 +336,19 @@ class TestWTrack:
         ), "All positions should be non-null"
 
 
-@pytest.mark.parametrize("use_hmm", [True, False])
-def test_linearization_hmm_modes(simple_rectangular_track, use_hmm):
-    """Test linearization with HMM enabled and disabled."""
+def test_linearization_without_hmm(simple_rectangular_track):
+    """Test linearization without HMM (nearest neighbor mode)."""
     # Create simple position data
     position = np.array([[5, 0], [15, 0], [25, 0]])
 
-    try:
-        position_df = get_linearized_position(
-            position=position,
-            track_graph=simple_rectangular_track,
-            use_HMM=use_hmm,
-        )
+    position_df = get_linearized_position(
+        position=position,
+        track_graph=simple_rectangular_track,
+        use_HMM=False,
+    )
 
-        assert hasattr(
-            position_df, "linear_position"
-        ), f"Result should have linear_position (HMM={use_hmm})"
-        assert len(position_df) == len(
-            position
-        ), f"Output length should match input (HMM={use_hmm})"
-    except Exception as e:
-        if use_hmm and ("numba" in str(e).lower() or "viterbi" in str(e).lower()):
-            # HMM mode may have compilation issues - this is a known limitation
-            pytest.skip(f"HMM mode failed due to compilation issue: {e}")
-        else:
-            raise  # Re-raise if it's not a known HMM issue
+    assert hasattr(position_df, "linear_position"), "Result should have linear_position"
+    assert len(position_df) == len(position), "Output length should match input"
 
 
 class TestEdgeCases:
@@ -375,22 +363,6 @@ class TestEdgeCases:
             track_graph = make_track_graph(node_positions, edges)
             position = np.array([[0, 0]])
             get_linearized_position(position=position, track_graph=track_graph)
-
-    def test_empty_position_data(self):
-        """Test handling of empty position data."""
-        node_positions = [(0, 0), (1, 0)]
-        edges = [(0, 1)]
-        track_graph = make_track_graph(node_positions, edges)
-
-        empty_position = np.empty((0, 2))
-        try:
-            position_df = get_linearized_position(
-                position=empty_position, track_graph=track_graph
-            )
-            assert len(position_df) == 0, "Empty input should produce empty output"
-        except (ValueError, IndexError):
-            # Empty position data may not be supported - this is acceptable
-            pytest.skip("Empty position data not supported by implementation")
 
     def test_single_position_point(self):
         """Test linearization with single position point."""

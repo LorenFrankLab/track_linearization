@@ -746,6 +746,156 @@ def batch_linear_distance(
     return linear_distance
 
 
+def _normalize_edge_spacing(
+    edge_spacing: float | list[float], n_edges: int
+) -> list[float]:
+    """Convert edge_spacing to list format with validation.
+
+    Parameters
+    ----------
+    edge_spacing : float or list of float
+        Spacing between consecutive edges.
+    n_edges : int
+        Number of edges in the edge_order.
+
+    Returns
+    -------
+    spacing_list : list of float
+        List of spacing values with length n_edges - 1.
+
+    Raises
+    ------
+    ValueError
+        If edge_spacing list has incorrect length.
+    TypeError
+        If edge_spacing has invalid type.
+    """
+    if isinstance(edge_spacing, (int, float)):
+        return [float(edge_spacing)] * (n_edges - 1) if n_edges > 1 else []
+    elif isinstance(edge_spacing, list):
+        expected_length = max(0, n_edges - 1)
+        if len(edge_spacing) != expected_length:
+            raise ValueError(
+                f"edge_spacing list has wrong length: got {len(edge_spacing)}, expected {expected_length}\n\n"
+                f"WHAT: The edge_spacing parameter has {len(edge_spacing)} values but needs {expected_length}.\n"
+                f"WHY: edge_spacing controls gaps between consecutive edges in the linearization.\n"
+                f"      For {n_edges} edges, you need {expected_length} spacing values (one between each pair).\n"
+                f"HOW: Either use a single value for uniform spacing, or provide {expected_length} values.\n\n"
+                f"Examples:\n"
+                f"    edge_spacing=10.0              # Uniform 10-unit gaps\n"
+                f"    edge_spacing=[10, 5, 15, ...]  # Custom gaps ({expected_length} values)"
+            )
+        return [float(es) for es in edge_spacing]
+    else:
+        raise TypeError(
+            f"edge_spacing has invalid type: {type(edge_spacing).__name__}\n\n"
+            "WHAT: edge_spacing must be either a number or a list of numbers.\n"
+            "WHY: This parameter controls the spacing between track segments.\n"
+            "HOW: Pass either a single value or a list.\n\n"
+            "Examples:\n"
+            "    edge_spacing=10.0        # All gaps are 10 units\n"
+            "    edge_spacing=[5, 10, 5]  # Custom gaps between segments"
+        )
+
+
+def _apply_edge_map_to_positions(
+    linear_position: np.ndarray,
+    track_segment_id: np.ndarray,
+    edge_map: dict[int, int],
+    track_graph: Graph,
+    edge_order: list[Edge],
+    edge_spacing: float | list[float],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply edge_map to adjust linear positions and segment IDs.
+
+    This function handles the merging of track segments by adjusting linear positions
+    so that merged edges share the same linear coordinate system.
+
+    Parameters
+    ----------
+    linear_position : np.ndarray, shape (n_time,)
+        Original linear positions calculated from physical edges.
+    track_segment_id : np.ndarray, shape (n_time,)
+        Original track segment IDs.
+    edge_map : dict
+        Mapping from original edge IDs to target edge IDs.
+    track_graph : networkx.Graph
+        The track graph.
+    edge_order : list of 2-tuples
+        Ordered list of edges.
+    edge_spacing : float or list of float
+        Spacing between consecutive edges.
+
+    Returns
+    -------
+    adjusted_linear_position : np.ndarray, shape (n_time,)
+        Linear positions adjusted for merged coordinate systems.
+    output_track_segment_id : np.ndarray, shape (n_time,)
+        Track segment IDs after applying edge_map.
+    """
+    spacing_list = _normalize_edge_spacing(edge_spacing, len(edge_order))
+
+    # Calculate starting linear positions for each target in merged space
+    target_start_positions = {}
+    cumulative_position = 0.0
+
+    for i, edge in enumerate(edge_order):
+        edge_id = track_graph.edges[edge]["edge_id"]
+        target = edge_map.get(edge_id, edge_id)
+
+        # Only record start position for first occurrence of each target
+        if target not in target_start_positions:
+            target_start_positions[target] = cumulative_position
+            # Add this edge's length and spacing to cumulative position
+            cumulative_position += track_graph.edges[edge]["distance"]
+            if i < len(spacing_list):
+                cumulative_position += spacing_list[i]
+
+    # Adjust linear positions based on merged coordinate systems
+    # For each position, find its offset within its original edge,
+    # then add that to the merged edge's starting position
+    adjusted_linear_position = np.zeros_like(linear_position)
+
+    # Build lookup from edge_id to starting position
+    edge_id_to_start_pos = {}
+    cumulative = 0.0
+    for i, edge in enumerate(edge_order):
+        edge_id = track_graph.edges[edge]["edge_id"]
+        edge_id_to_start_pos[edge_id] = cumulative
+        cumulative += track_graph.edges[edge]["distance"]
+        if i < len(spacing_list):
+            cumulative += spacing_list[i]
+
+    for i in range(len(track_segment_id)):
+        orig_edge_id = (
+            int(track_segment_id[i]) if not np.isnan(track_segment_id[i]) else 0
+        )
+        orig_start = edge_id_to_start_pos.get(orig_edge_id, 0.0)
+        offset_within_edge = linear_position[i] - orig_start
+
+        target = edge_map.get(orig_edge_id, orig_edge_id)
+        new_start = target_start_positions.get(target, orig_start)
+        adjusted_linear_position[i] = new_start + offset_within_edge
+
+    # Output uses the target segment IDs from edge_map
+    # Check if edge_map contains non-integer values for dtype handling
+    has_non_int_values = any(
+        not isinstance(v, (int, np.integer)) for v in edge_map.values()
+    )
+    if has_non_int_values:
+        # Convert to object dtype to support mixed types
+        output_track_segment_id = np.empty(len(track_segment_id), dtype=object)
+        output_track_segment_id[:] = track_segment_id
+    else:
+        output_track_segment_id = track_segment_id.copy()
+
+    # Apply mapping
+    for cur_edge, new_edge in edge_map.items():
+        output_track_segment_id[track_segment_id == cur_edge] = new_edge
+
+    return adjusted_linear_position, output_track_segment_id
+
+
 def _calculate_linear_position(
     track_graph: Graph,
     position: np.ndarray,
@@ -789,34 +939,7 @@ def _calculate_linear_position(
         (np.arange(n_time), track_segment_id)
     ]
 
-    n_edges = len(edge_order)
-    edge_spacing_list: list[float]
-    if isinstance(edge_spacing, (int, float)):
-        edge_spacing_list = [float(edge_spacing)] * (n_edges - 1) if n_edges > 1 else []
-    elif isinstance(edge_spacing, list):
-        expected_length = max(0, n_edges - 1)
-        if len(edge_spacing) != expected_length:
-            raise ValueError(
-                f"edge_spacing list has wrong length: got {len(edge_spacing)}, expected {expected_length}\n\n"
-                f"WHAT: The edge_spacing parameter has {len(edge_spacing)} values but needs {expected_length}.\n"
-                f"WHY: edge_spacing controls gaps between consecutive edges in the linearization.\n"
-                f"      For {n_edges} edges, you need {expected_length} spacing values (one between each pair).\n"
-                f"HOW: Either use a single value for uniform spacing, or provide {expected_length} values.\n\n"
-                f"Examples:\n"
-                f"    edge_spacing=10.0              # Uniform 10-unit gaps\n"
-                f"    edge_spacing=[10, 5, 15, ...]  # Custom gaps ({expected_length} values)"
-            )
-        edge_spacing_list = [float(es) for es in edge_spacing]
-    else:
-        raise TypeError(
-            f"edge_spacing has invalid type: {type(edge_spacing).__name__}\n\n"
-            "WHAT: edge_spacing must be either a number or a list of numbers.\n"
-            "WHY: This parameter controls the spacing between track segments.\n"
-            "HOW: Pass either a single value or a list.\n\n"
-            "Examples:\n"
-            "    edge_spacing=10.0        # All gaps are 10 units\n"
-            "    edge_spacing=[5, 10, 5]  # Custom gaps between segments"
-        )
+    edge_spacing_list = _normalize_edge_spacing(edge_spacing, len(edge_order))
 
     counter = 0.0
     start_node_linear_position = []
@@ -1039,97 +1162,28 @@ def get_linearized_position(
         track_segments = get_track_segments_from_graph(track_graph)
         track_segment_id = find_nearest_segment(track_segments, position)
 
+    # Calculate linear positions using original edge_order
+    # This ensures positions are projected onto their actual physical edges
+    (
+        linear_position,
+        projected_x_position,
+        projected_y_position,
+    ) = _calculate_linear_position(
+        track_graph, position, track_segment_id, edge_order, edge_spacing
+    )
+
     # Apply edge_map to create merged edge_order and spacing
     # This ensures merged edges share the same linear position space
     if edge_map is not None:
-        # First, calculate linear positions using original edge_order
-        # This ensures positions are projected onto their actual physical edges
-        (
+        linear_position, output_track_segment_id = _apply_edge_map_to_positions(
             linear_position,
-            projected_x_position,
-            projected_y_position,
-        ) = _calculate_linear_position(
-            track_graph, position, track_segment_id, edge_order, edge_spacing
+            track_segment_id,
+            edge_map,
+            track_graph,
+            edge_order,
+            edge_spacing,
         )
-
-        # Now apply the edge_map to adjust linear positions for merged edges
-        # Merged edges should share the same linear coordinate system
-
-        # Calculate starting linear positions for each target in merged space
-        target_start_positions = {}
-        cumulative_position = 0.0
-
-        if isinstance(edge_spacing, list):
-            spacing_list = edge_spacing
-        else:
-            spacing_list = (
-                [edge_spacing] * (len(edge_order) - 1) if len(edge_order) > 1 else []
-            )
-
-        for i, edge in enumerate(edge_order):
-            edge_id = track_graph.edges[edge]["edge_id"]
-            target = edge_map.get(edge_id, edge_id)
-
-            # Only record start position for first occurrence of each target
-            if target not in target_start_positions:
-                target_start_positions[target] = cumulative_position
-                # Add this edge's length and spacing to cumulative position
-                cumulative_position += track_graph.edges[edge]["distance"]
-                if i < len(spacing_list):
-                    cumulative_position += spacing_list[i]
-
-        # Adjust linear positions based on merged coordinate systems
-        # For each position, find its offset within its original edge,
-        # then add that to the merged edge's starting position
-        adjusted_linear_position = np.zeros_like(linear_position)
-
-        # Build lookup from edge_id to starting position
-        edge_id_to_start_pos = {}
-        cumulative = 0.0
-        for i, edge in enumerate(edge_order):
-            edge_id = track_graph.edges[edge]["edge_id"]
-            edge_id_to_start_pos[edge_id] = cumulative
-            cumulative += track_graph.edges[edge]["distance"]
-            if i < len(spacing_list):
-                cumulative += spacing_list[i]
-
-        for i in range(len(track_segment_id)):
-            orig_edge_id = (
-                int(track_segment_id[i]) if not np.isnan(track_segment_id[i]) else 0
-            )
-            orig_start = edge_id_to_start_pos.get(orig_edge_id, 0.0)
-            offset_within_edge = linear_position[i] - orig_start
-
-            target = edge_map.get(orig_edge_id, orig_edge_id)
-            new_start = target_start_positions.get(target, orig_start)
-            adjusted_linear_position[i] = new_start + offset_within_edge
-
-        linear_position = adjusted_linear_position
-
-        # Output uses the target segment IDs from edge_map
-        # Check if edge_map contains non-integer values for dtype handling
-        has_non_int_values = any(
-            not isinstance(v, (int, np.integer)) for v in edge_map.values()
-        )
-        if has_non_int_values:
-            # Convert to object dtype to support mixed types
-            output_track_segment_id = np.empty(len(track_segment_id), dtype=object)
-            output_track_segment_id[:] = track_segment_id
-        else:
-            output_track_segment_id = track_segment_id.copy()
-
-        # Apply mapping
-        for cur_edge, new_edge in edge_map.items():
-            output_track_segment_id[track_segment_id == cur_edge] = new_edge
     else:
-        # No mapping - use original edge_order
-        (
-            linear_position,
-            projected_x_position,
-            projected_y_position,
-        ) = _calculate_linear_position(
-            track_graph, position, track_segment_id, edge_order, edge_spacing
-        )
         output_track_segment_id = track_segment_id
 
     return pd.DataFrame(
