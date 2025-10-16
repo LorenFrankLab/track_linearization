@@ -116,8 +116,9 @@ def test_route_distance_produces_finite_matrix():
     if not hasattr(core, "route_distance"):
         pytest.skip("route_distance not available")
     g = _simple_line_graph(n=4, dim=2, with_distance=True)
-    p_start = np.array([[0.1, 0.0]], dtype=float)  # (K,2)
-    p_end = np.array([[2.9, 0.0]], dtype=float)  # (K,2)
+    # route_distance expects one candidate point per edge (3 edges)
+    p_start = np.array([[0.1, 0.0], [1.1, 0.0], [2.1, 0.0]], dtype=float)  # (3,2)
+    p_end = np.array([[0.9, 0.0], [1.9, 0.0], [2.9, 0.0]], dtype=float)  # (3,2)
     out = core.route_distance(p_start, p_end, g.copy())
     arr = np.asarray(out)
     assert arr.ndim in (1, 2)
@@ -585,7 +586,7 @@ class TestEdgeSpacingParameter:
         # Wrong length: should be n_edges - 1 = 2, but giving 3
         invalid_spacing = [5, 10, 15]
 
-        with pytest.raises(ValueError, match="edge_spacing list length"):
+        with pytest.raises(ValueError, match="edge_spacing.*wrong length"):
             get_linearized_position(
                 position=position,
                 track_graph=simple_rectangular_track,

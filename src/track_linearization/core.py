@@ -20,6 +20,114 @@ except ImportError:
     NUMBA_AVAILABLE = False
 
 
+def validate_track_graph(track_graph: Graph, edge_order: list[Edge] | None = None) -> None:
+    """Validate that track_graph has the required structure for linearization.
+
+    Parameters
+    ----------
+    track_graph : networkx.Graph
+        The track graph to validate.
+    edge_order : list of 2-tuples, optional
+        If provided, validates that these edges exist in the graph.
+
+    Raises
+    ------
+    ValueError
+        If the graph structure is invalid, with specific guidance on how to fix it.
+
+    Examples
+    --------
+    >>> import networkx as nx
+    >>> g = nx.Graph()
+    >>> g.add_node(0, pos=(0, 0))
+    >>> g.add_node(1, pos=(1, 0))
+    >>> g.add_edge(0, 1, distance=1.0, edge_id=0)
+    >>> validate_track_graph(g)  # No error - valid graph
+    """
+    # Check for edges
+    if len(track_graph.edges) == 0:
+        raise ValueError(
+            "Track graph has no edges.\n\n"
+            "WHAT: The track graph must contain at least one edge connecting two nodes.\n"
+            "WHY: Linearization requires track segments to project positions onto.\n"
+            "HOW: Create a valid track using make_track_graph(node_positions, edges)\n\n"
+            "Example:\n"
+            "    from track_linearization import make_track_graph\n"
+            "    node_positions = [(0, 0), (10, 0), (10, 10)]\n"
+            "    edges = [(0, 1), (1, 2)]\n"
+            "    track_graph = make_track_graph(node_positions, edges)"
+        )
+
+    # Check node attributes
+    nodes_without_pos = [
+        n for n in track_graph.nodes if "pos" not in track_graph.nodes[n]
+    ]
+    if nodes_without_pos:
+        raise ValueError(
+            f"Nodes {nodes_without_pos[:5]} are missing 'pos' attribute "
+            f"({len(nodes_without_pos)} total).\n\n"
+            "WHAT: All nodes must have a 'pos' attribute containing spatial coordinates.\n"
+            "WHY: The 'pos' attribute defines where each node is located in space.\n"
+            "HOW: Use make_track_graph() which automatically adds this attribute:\n\n"
+            "Example:\n"
+            "    track_graph = make_track_graph(node_positions, edges)\n\n"
+            "Or add manually:\n"
+            "    track_graph.nodes[node_id]['pos'] = (x, y)"
+        )
+
+    # Check edge attributes - distance
+    edges_without_distance = [
+        e for e in track_graph.edges if "distance" not in track_graph.edges[e]
+    ]
+    if edges_without_distance:
+        raise ValueError(
+            f"{len(edges_without_distance)} edges are missing 'distance' attribute.\n\n"
+            "WHAT: All edges must have a 'distance' attribute (Euclidean length).\n"
+            "WHY: Distances are required for calculating linear positions.\n"
+            "HOW: Use make_track_graph() which automatically computes distances:\n\n"
+            "Example:\n"
+            "    track_graph = make_track_graph(node_positions, edges)\n\n"
+            "Or compute manually:\n"
+            "    import numpy as np\n"
+            "    for node1, node2 in track_graph.edges:\n"
+            "        pos1 = np.array(track_graph.nodes[node1]['pos'])\n"
+            "        pos2 = np.array(track_graph.nodes[node2]['pos'])\n"
+            "        track_graph.edges[(node1, node2)]['distance'] = np.linalg.norm(pos2 - pos1)"
+        )
+
+    # Check edge attributes - edge_id
+    edges_without_id = [
+        e for e in track_graph.edges if "edge_id" not in track_graph.edges[e]
+    ]
+    if edges_without_id:
+        raise ValueError(
+            f"{len(edges_without_id)} edges are missing 'edge_id' attribute.\n\n"
+            "WHAT: All edges must have an 'edge_id' attribute (unique integer).\n"
+            "WHY: Edge IDs are used to identify which track segment positions belong to.\n"
+            "HOW: Use make_track_graph() which automatically assigns edge IDs:\n\n"
+            "Example:\n"
+            "    track_graph = make_track_graph(node_positions, edges)\n\n"
+            "Or assign manually:\n"
+            "    for edge_id, edge in enumerate(track_graph.edges):\n"
+            "        track_graph.edges[edge]['edge_id'] = edge_id"
+        )
+
+    # Validate edge_order if provided
+    if edge_order is not None:
+        invalid_edges = [e for e in edge_order if not track_graph.has_edge(*e)]
+        if invalid_edges:
+            available_edges = list(track_graph.edges)
+            raise ValueError(
+                f"{len(invalid_edges)} edges in edge_order are not in the graph.\n\n"
+                f"WHAT: edge_order contains edges that don't exist in track_graph.\n"
+                f"WHY: Can only linearize using edges that are actually in the graph.\n"
+                f"HOW: Check that your edge_order only uses valid edges.\n\n"
+                f"Invalid edges (showing first 5): {invalid_edges[:5]}\n"
+                f"Available edges in graph: {available_edges[:10]}\n"
+                f"{'...' if len(available_edges) > 10 else ''}"
+            )
+
+
 def get_track_segments_from_graph(
     track_graph: "Graph",
 ) -> np.ndarray:
@@ -148,7 +256,7 @@ def euclidean_distance_change(position: np.ndarray) -> np.ndarray:
 def route_distance(
     candidates_t_1: np.ndarray,
     candidates_t: np.ndarray,
-    track_graph: "Graph",
+    track_graph: Graph,
 ) -> np.ndarray:
     """Calculates route distances between sets of candidate points on a track graph.
 
@@ -282,7 +390,7 @@ def batch_route_distance(
     return np.stack(distances)
 
 
-def route_distance_change(position: np.ndarray, track_graph: "Graph") -> np.ndarray:
+def route_distance_change(position: np.ndarray, track_graph: Graph) -> np.ndarray:
     """Calculates route distances between projected positions at successive time points.
 
     Parameters
@@ -325,7 +433,7 @@ def route_distance_change(position: np.ndarray, track_graph: "Graph") -> np.ndar
 
 
 def calculate_position_likelihood(
-    position: np.ndarray, track_graph: "Graph", sigma: float = 10.0
+    position: np.ndarray, track_graph: Graph, sigma: float = 10.0
 ) -> np.ndarray:
     r"""Calculates the likelihood of a position being associated with track segments.
 
@@ -378,7 +486,7 @@ def normalize_to_probability(x: np.ndarray, axis: int = -1) -> np.ndarray:
 
 def calculate_empirical_state_transition(
     position: np.ndarray,
-    track_graph: "Graph",
+    track_graph: Graph,
     scaling: float = 1e-1,
     diagonal_bias: float = 1e-1,
 ) -> np.ndarray:
@@ -510,7 +618,7 @@ else:
 
 
 def classify_track_segments(
-    track_graph: "Graph",
+    track_graph: Graph,
     position: np.ndarray,
     sensor_std_dev: float = 10.0,
     route_euclidean_distance_scaling: float = 1e-1,
@@ -578,7 +686,7 @@ def classify_track_segments(
 
 
 def batch_linear_distance(
-    track_graph: "Graph",
+    track_graph: Graph,
     projected_track_positions: np.ndarray,
     edge_ids: list[tuple[Any, Any]],
     linear_zero_node_id: Any,
@@ -636,7 +744,7 @@ def batch_linear_distance(
 
 
 def _calculate_linear_position(
-    track_graph: "Graph",
+    track_graph: Graph,
     position: np.ndarray,
     track_segment_id: np.ndarray,
     edge_order: list[Edge],
@@ -683,11 +791,29 @@ def _calculate_linear_position(
     if isinstance(edge_spacing, (int, float)):
         edge_spacing_list = [float(edge_spacing)] * (n_edges - 1) if n_edges > 1 else []
     elif isinstance(edge_spacing, list):
-        if len(edge_spacing) != max(0, n_edges - 1):
-            raise ValueError(f"edge_spacing list length must be {max(0, n_edges - 1)}")
+        expected_length = max(0, n_edges - 1)
+        if len(edge_spacing) != expected_length:
+            raise ValueError(
+                f"edge_spacing list has wrong length: got {len(edge_spacing)}, expected {expected_length}\n\n"
+                f"WHAT: The edge_spacing parameter has {len(edge_spacing)} values but needs {expected_length}.\n"
+                f"WHY: edge_spacing controls gaps between consecutive edges in the linearization.\n"
+                f"      For {n_edges} edges, you need {expected_length} spacing values (one between each pair).\n"
+                f"HOW: Either use a single value for uniform spacing, or provide {expected_length} values.\n\n"
+                f"Examples:\n"
+                f"    edge_spacing=10.0              # Uniform 10-unit gaps\n"
+                f"    edge_spacing=[10, 5, 15, ...]  # Custom gaps ({expected_length} values)"
+            )
         edge_spacing_list = [float(es) for es in edge_spacing]
     else:
-        raise TypeError("edge_spacing must be float or list of floats.")
+        raise TypeError(
+            f"edge_spacing has invalid type: {type(edge_spacing).__name__}\n\n"
+            "WHAT: edge_spacing must be either a number or a list of numbers.\n"
+            "WHY: This parameter controls the spacing between track segments.\n"
+            "HOW: Pass either a single value or a list.\n\n"
+            "Examples:\n"
+            "    edge_spacing=10.0        # All gaps are 10 units\n"
+            "    edge_spacing=[5, 10, 5]  # Custom gaps between segments"
+        )
 
     counter = 0.0
     start_node_linear_position = []
@@ -736,7 +862,7 @@ def _calculate_linear_position(
 
 def get_linearized_position(
     position: np.ndarray,
-    track_graph: "Graph",
+    track_graph: Graph,
     edge_order: list[Edge] | None = None,
     edge_spacing: float | list[float] = 0.0,
     use_HMM: bool = False,
@@ -747,54 +873,137 @@ def get_linearized_position(
 ) -> pd.DataFrame:
     """Linearize 2D position based on graph representation of track.
 
+    This function converts 2D spatial trajectories into 1D linear positions along a track.
+    It's commonly used in neuroscience to analyze animal movement on mazes or tracks.
+
+    Note: All spatial quantities (position, distance, sensor_std_dev) must use consistent
+    units. The package is unit-agnostic, but centimeters are commonly used in neuroscience.
+
     Parameters
     ----------
-    position : numpy.ndarray, shape (n_time, n_space) # n_space added
-        2D or 3D position of the animal.
+    position : numpy.ndarray, shape (n_time, n_space)
+        2D or 3D position of the animal over time.
+        Shape: (n_time, 2) for 2D positions, (n_time, 3) for 3D.
     track_graph : networkx.Graph
-        Graph representation of the 2D track. Nodes need "pos" attributes.
-        Edges should ideally have "distance" (length) and unique integer "edge_id" attributes.
-        If 'edge_id' is missing, this function might behave unpredictably or assign temporary ones.
-    edge_order : list of 2-tuples, optional # Description clarified
-        Controls order of track segments in 1D position. Specify as edges as
-        node pairs such as [(node1, node2), (node2, node3)]. These edge tuples
-        must be keys in `track_graph.edges`.
+        Graph representation of the 2D track. Must be created with make_track_graph()
+        or have the required attributes:
+        - Nodes: 'pos' attribute with spatial coordinates (x, y)
+        - Edges: 'distance' attribute (Euclidean length) and 'edge_id' attribute (unique integer)
+    edge_order : list of 2-tuples, optional
+        Controls the order of track segments in the 1D linearization. Each element should be
+        an edge from the graph as a tuple (node1, node2).
+
+        If None (default), uses the order edges were added to the graph. This is deterministic
+        but may not be spatially intuitive. For reproducible results with complex tracks,
+        explicitly specify edge_order or use infer_edge_layout() to generate it automatically.
+
+        Example: [(0, 1), (1, 2), (2, 3)] specifies the path through nodes 0→1→2→3.
     edge_spacing : float or list of float, optional
-        Controls the spacing between track segments in 1D position.
-        If float, applied uniformly. If list, length must be `len(edge_order) - 1`.
-        Default is 0.0.
+        Controls gaps between track segments in the 1D representation.
+        - If float: uniform spacing applied between all consecutive segments
+        - If list: custom spacing for each gap (length must be len(edge_order) - 1)
+        Default is 0.0 (no gaps).
     use_HMM : bool, optional
-        If True, then uses HMM to classify the edge the animal is on.
-        If False, then finds the closest edge (using euclidean distance).
-        Default is False.
-    route_euclidean_distance_scaling : float, optional (used with HMM)
-        How much to prefer route distances between successive
-        time points that are closer to the euclidean distance. Smaller
-        numbers mean the route distance is more likely to be close to the
-        euclidean distance. This favors less jumps. Larger numbers favor
-        more jumps. Default is 1.0.
-    sensor_std_dev : float, optional (used with HMM)
-        The variability of the sensor used to track position. Default is 5.0.
-    diagonal_bias : float, optional, 0.0 to 1.0 (used with HMM)
-        Bigger values mean the linear position is more likely
-        to stick to the current track segment. Default is 0.1.
+        If True, uses Hidden Markov Model to classify which edge the animal is on,
+        considering temporal continuity. If False, simply finds the closest edge
+        using Euclidean distance. Default is False (faster, good for clean data).
+    route_euclidean_distance_scaling : float, optional
+        (Only used when use_HMM=True) Controls how much to penalize jumps between
+        non-adjacent segments. Smaller values (e.g., 0.1) strongly prefer smooth paths
+        with fewer jumps. Larger values (e.g., 10.0) allow more jumps. Default is 1.0.
+    sensor_std_dev : float, optional
+        (Only used when use_HMM=True) Standard deviation of position sensor noise,
+        in the same units as position data. Typical values: 5-10 for camera tracking
+        in centimeters. Default is 5.0.
+    diagonal_bias : float, optional
+        (Only used when use_HMM=True) Biases the HMM to stay on the current segment.
+        Range 0.0-1.0, where larger values increase the probability of staying on
+        the same segment. Default is 0.1.
     edge_map : dict, optional
-        Maps one 'edge_id' to another 'edge_id' before linearization.
-        E.g., `{original_id: new_id}`.
+        Maps edge IDs to new values in the output. Use this to merge or relabel segments.
+        Example: {0: 10, 1: 10, 2: 20} merges segments 0 and 1 into segment 10.
+        Default is None (no remapping).
 
     Returns
     -------
     position_df : pandas.DataFrame
-        DataFrame with columns:
-        - 'linear_position': linear position of animal.
-        - 'track_segment_id': the 'edge_id' the animal is on (after mapping if `edge_map` is used).
-        - 'projected_x_position', 'projected_y_position' (and 'projected_z_position' etc. if n_space > 2)
-          are the coordinates of the 2D/3D position projected to the track_graph.
+        DataFrame with one row per time point, containing:
+        - 'linear_position': 1D position along the linearized track
+        - 'track_segment_id': which edge/segment the position is on (after edge_map applied)
+        - 'projected_x_position', 'projected_y_position': coordinates projected onto track
+
+    Raises
+    ------
+    ValueError
+        If track_graph is missing required attributes or edge_order contains invalid edges.
+
+    Examples
+    --------
+    Basic usage with a simple linear track:
+
+    >>> import numpy as np
+    >>> from track_linearization import make_track_graph, get_linearized_position
+    >>>
+    >>> # Create a simple L-shaped track
+    >>> node_positions = [(0, 0), (10, 0), (10, 10)]
+    >>> edges = [(0, 1), (1, 2)]
+    >>> track_graph = make_track_graph(node_positions, edges)
+    >>>
+    >>> # Animal positions moving along the track
+    >>> position = np.array([[2, 0], [5, 0], [10, 3], [10, 7]])
+    >>>
+    >>> # Linearize the positions
+    >>> result = get_linearized_position(position, track_graph)
+    >>> result[['linear_position', 'track_segment_id']]
+       linear_position  track_segment_id
+    0              2.0                 0
+    1              5.0                 0
+    2             13.0                 1
+    3             17.0                 1
+
+    Using custom edge spacing to add gaps:
+
+    >>> result = get_linearized_position(
+    ...     position, track_graph, edge_spacing=5.0
+    ... )
+    >>> # Now positions on segment 1 will be offset by 5 units
+
+    Using HMM for noisy data with temporal continuity:
+
+    >>> result = get_linearized_position(
+    ...     position, track_graph,
+    ...     use_HMM=True,
+    ...     sensor_std_dev=10.0,  # Higher noise tolerance
+    ...     diagonal_bias=0.5     # Strong preference to stay on same segment
+    ... )
+
+    See Also
+    --------
+    make_track_graph : Create a properly formatted track graph
+    infer_edge_layout : Automatically determine edge_order and edge_spacing
+    project_1d_to_2d : Convert linear positions back to 2D coordinates
     """
+    import warnings
+
     # If no edge_order is given, then arange edges in the order passed to
     # construct the track graph
     if edge_order is None:
         edge_order = list(track_graph.edges)
+
+    # Validate track graph structure
+    validate_track_graph(track_graph, edge_order)
+
+    # Warning for extremely large edge_spacing values
+    if len(edge_order) > 0:
+        max_edge_length = max(track_graph.edges[e]["distance"] for e in edge_order)
+        if isinstance(edge_spacing, (int, float)) and edge_spacing > 10 * max_edge_length:
+            warnings.warn(
+                f"edge_spacing ({edge_spacing:.1f}) is very large compared to typical edge length ({max_edge_length:.1f}).\n"
+                f"This may create unexpectedly large gaps in the linearized representation.\n"
+                f"Did you mean edge_spacing={edge_spacing/10:.1f}?",
+                UserWarning,
+                stacklevel=2,
+            )
 
     # Figure out the most probable track segement that correponds to
     # 2D position
@@ -810,11 +1019,7 @@ def get_linearized_position(
         track_segments = get_track_segments_from_graph(track_graph)
         track_segment_id = find_nearest_segment(track_segments, position)
 
-    # Allow resassignment of edges
-    if edge_map is not None:
-        for cur_edge, new_edge in edge_map.items():
-            track_segment_id[track_segment_id == cur_edge] = new_edge
-
+    # Calculate linear position using original edge IDs (before mapping)
     (
         linear_position,
         projected_x_position,
@@ -823,10 +1028,28 @@ def get_linearized_position(
         track_graph, position, track_segment_id, edge_order, edge_spacing
     )
 
+    # Apply edge_map to output track_segment_id only (after internal calculations)
+    # Convert to object dtype if edge_map contains non-integer values (e.g., strings)
+    if edge_map is not None:
+        # Check if edge_map contains non-integer values
+        has_non_int_values = any(not isinstance(v, (int, np.integer)) for v in edge_map.values())
+        if has_non_int_values:
+            # Convert to object array to support mixed types
+            output_track_segment_id = np.empty(len(track_segment_id), dtype=object)
+            output_track_segment_id[:] = track_segment_id
+        else:
+            output_track_segment_id = track_segment_id.copy()
+
+        # Apply mapping
+        for cur_edge, new_edge in edge_map.items():
+            output_track_segment_id[track_segment_id == cur_edge] = new_edge
+    else:
+        output_track_segment_id = track_segment_id
+
     return pd.DataFrame(
         {
             "linear_position": linear_position,
-            "track_segment_id": track_segment_id,
+            "track_segment_id": output_track_segment_id,
             "projected_x_position": projected_x_position,
             "projected_y_position": projected_y_position,
         }
