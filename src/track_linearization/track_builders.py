@@ -458,6 +458,54 @@ def make_ymaze_track(
     return make_track_graph(node_positions, edges)
 
 
+def make_track_from_points(
+    node_positions: list[tuple[float, float]],
+    edges: list[tuple[int, int]],
+    scale: float = 1.0,
+) -> dict[str, Any]:
+    """Create a track from pre-defined node positions and edges.
+
+    This is a non-interactive alternative to make_track_from_image_interactive()
+    for cases where you already know the node positions and edges.
+
+    Parameters
+    ----------
+    node_positions : list[tuple[float, float]]
+        List of (x, y) coordinates for each node.
+    edges : list[tuple[int, int]]
+        List of (node_i, node_j) pairs defining edges.
+    scale : float, optional
+        Scale factor for coordinates (default: 1.0).
+
+    Returns
+    -------
+    result : dict
+        Dictionary with 'track_graph', 'node_positions', 'edges', 'pixel_positions'.
+
+    Examples
+    --------
+    >>> nodes = [(0, 0), (100, 0), (100, 100)]
+    >>> edges = [(0, 1), (1, 2)]
+    >>> result = make_track_from_points(nodes, edges)
+    >>> track = result['track_graph']
+    """
+    scaled_positions = [(x * scale, y * scale) for x, y in node_positions]
+
+    try:
+        track_graph = make_track_graph(scaled_positions, edges)
+        print(f"✓ Created track with {len(scaled_positions)} nodes and {len(edges)} edges")
+    except Exception as e:
+        print(f"✗ Error creating track: {e}")
+        track_graph = None
+
+    return {
+        'track_graph': track_graph,
+        'node_positions': scaled_positions,
+        'edges': edges,
+        'pixel_positions': node_positions,
+    }
+
+
 def make_track_from_image_interactive(
     image_path: str | Path | None = None,
     image_array: np.ndarray | None = None,
@@ -526,6 +574,14 @@ def make_track_from_image_interactive(
     else:
         raise ValueError("Either image_path or image_array must be provided")
 
+    # Detect if we're in Jupyter early
+    try:
+        from IPython import get_ipython
+        ipython = get_ipython()
+        is_jupyter = ipython is not None and 'IPKernelApp' in ipython.config
+    except:
+        is_jupyter = False
+
     # State variables
     state = {
         'nodes': [],  # List of (x, y) pixel coordinates
@@ -538,7 +594,10 @@ def make_track_from_image_interactive(
     }
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig = plt.figure(figsize=(12, 11))
+
+    # Main image axes
+    ax = fig.add_axes([0.05, 0.15, 0.9, 0.8])
     ax.imshow(img, origin='upper')
 
     # Title with mode indicator
@@ -556,6 +615,29 @@ def make_track_from_image_interactive(
 
     ax.set_xlabel("X (pixels)")
     ax.set_ylabel("Y (pixels)")
+
+    # Add buttons at bottom (only for non-Jupyter environments)
+    if not is_jupyter:
+        from matplotlib.widgets import Button
+
+        ax_finish = fig.add_axes([0.7, 0.02, 0.1, 0.05])
+        btn_finish = Button(ax_finish, 'Finish', color='lightgreen', hovercolor='green')
+
+        ax_cancel = fig.add_axes([0.82, 0.02, 0.1, 0.05])
+        btn_cancel = Button(ax_cancel, 'Cancel', color='lightcoral', hovercolor='red')
+
+        def on_finish_click(event):
+            state['finished'] = True
+            print("\n✓ Finished! (via button) Creating track graph...")
+            plt.close(fig)
+
+        def on_cancel_click(event):
+            state['cancelled'] = True
+            print("\n✗ Cancelled (via button).")
+            plt.close(fig)
+
+        btn_finish.on_clicked(on_finish_click)
+        btn_cancel.on_clicked(on_cancel_click)
 
     # Storage for plot elements
     node_scatter = ax.scatter([], [], c='red', s=100, zorder=10, marker='o', edgecolors='white', linewidths=2)
@@ -630,11 +712,21 @@ def make_track_from_image_interactive(
 
     def on_press(event):
         """Handle mouse press."""
-        if event.inaxes != ax or state['finished'] or state['cancelled']:
+        print(f"[DEBUG] on_press fired! event.inaxes={event.inaxes}, event.button={event.button}")
+
+        if event.inaxes != ax:
+            print(f"[DEBUG] Click not in main axes (event.inaxes={event.inaxes}, ax={ax})")
+            return
+
+        if state['finished'] or state['cancelled']:
+            print(f"[DEBUG] State already finished or cancelled")
             return
 
         x, y = event.xdata, event.ydata
+        print(f"[DEBUG] Click coordinates: x={x}, y={y}")
+
         if x is None or y is None:
+            print(f"[DEBUG] Coordinates are None - click outside data area")
             return
 
         # Check which mode we're in
@@ -670,6 +762,7 @@ def make_track_from_image_interactive(
 
     def on_motion(event):
         """Handle mouse motion for edge preview."""
+        # Note: Don't print debug here - too spammy during mouse movement
         if event.inaxes != ax or state['finished'] or state['cancelled']:
             return
         if state['mode'] != 'EDGE' or state['edge_start_node'] is None:
@@ -692,13 +785,25 @@ def make_track_from_image_interactive(
 
     def on_release(event):
         """Handle mouse release."""
-        if event.inaxes != ax or state['finished'] or state['cancelled']:
+        print(f"[DEBUG] on_release fired! event.inaxes={event.inaxes}, event.button={event.button}")
+
+        if event.inaxes != ax:
+            print(f"[DEBUG] Release not in main axes")
             return
+
+        if state['finished'] or state['cancelled']:
+            print(f"[DEBUG] State already finished or cancelled")
+            return
+
         if state['mode'] != 'EDGE' or state['edge_start_node'] is None:
+            print(f"[DEBUG] Not in EDGE mode or no start node (mode={state['mode']}, start_node={state['edge_start_node']})")
             return
 
         x, y = event.xdata, event.ydata
+        print(f"[DEBUG] Release coordinates: x={x}, y={y}")
+
         if x is None or y is None:
+            print(f"[DEBUG] Release coordinates are None")
             state['edge_start_node'] = None
             if state['edge_preview_line'] is not None:
                 state['edge_preview_line'].remove()
@@ -708,6 +813,8 @@ def make_track_from_image_interactive(
 
         # Find end node
         closest = find_closest_node(x, y)
+        print(f"[DEBUG] Closest node to release: {closest}")
+
         if closest is not None and closest != state['edge_start_node']:
             # Create edge
             node1, node2 = state['edge_start_node'], closest
@@ -727,10 +834,16 @@ def make_track_from_image_interactive(
 
     def on_key(event):
         """Handle key presses."""
+        # Debug: print any key press
+        if event.key:
+            print(f"[DEBUG] Key detected: '{event.key}'")
+
         if event.key == 'f':  # Finish
             state['finished'] = True
             print("\n✓ Finished! Creating track graph...")
+            print("   Closing window...")
             plt.close(fig)
+            print("   Window closed.")
         elif event.key == 'q':  # Quit
             state['cancelled'] = True
             print("\n✗ Cancelled.")
@@ -773,6 +886,13 @@ def make_track_from_image_interactive(
         print("\n" + "=" * 70)
         print("INTERACTIVE TRACK BUILDER - CONTROLS")
         print("=" * 70)
+
+        if not is_jupyter:
+            print("BUTTONS (at bottom of window):")
+            print("  [Finish] button:  Finish and create track graph")
+            print("  [Cancel] button:  Quit without creating track")
+            print()
+
         print("MODES (press key to switch):")
         print("  'a' key:        ADD NODE mode - Click anywhere to add node")
         print("  'e' key:        CREATE EDGE mode - Click & drag between nodes")
@@ -782,9 +902,10 @@ def make_track_from_image_interactive(
         print("  Click:          Action depends on current mode (see above)")
         print("  Click & Drag:   In EDGE mode, creates edge between nodes")
         print()
-        print("SHORTCUTS:")
-        print("  'f' key:        Finish and create track graph")
-        print("  'q' key:        Quit without creating track")
+        print("KEYBOARD SHORTCUTS:")
+        if not is_jupyter:
+            print("  'f' key:        Finish and create track graph")
+            print("  'q' key:        Quit without creating track")
         print("  'u' key:        Undo last node")
         print("  'Backspace':    Delete last edge")
         print("  'h' key:        Show this help")
@@ -795,13 +916,30 @@ def make_track_from_image_interactive(
         print("  Red banner:     DELETE NODE mode")
         print("  Yellow circle:  Selected node during edge creation")
         print("  Yellow dashed:  Edge preview while dragging")
+        print()
+
+        if is_jupyter:
+            print("📌 JUPYTER: Build your track, then retrieve results in a new cell")
+            print("   (See instructions below after running this cell)")
+        else:
+            print("⚠️  If keyboard doesn't work, use [Finish] button at bottom!")
+
         print("=" * 70 + "\n")
 
     # Connect event handlers
-    fig.canvas.mpl_connect('button_press_event', on_press)
-    fig.canvas.mpl_connect('button_release_event', on_release)
-    fig.canvas.mpl_connect('motion_notify_event', on_motion)
-    fig.canvas.mpl_connect('key_press_event', on_key)
+    cid_press = fig.canvas.mpl_connect('button_press_event', on_press)
+    cid_release = fig.canvas.mpl_connect('button_release_event', on_release)
+    cid_motion = fig.canvas.mpl_connect('motion_notify_event', on_motion)
+    cid_key = fig.canvas.mpl_connect('key_press_event', on_key)
+
+    print(f"[DEBUG] Event handlers connected:")
+    print(f"  - button_press_event: {cid_press}")
+    print(f"  - button_release_event: {cid_release}")
+    print(f"  - motion_notify_event: {cid_motion}")
+    print(f"  - key_press_event: {cid_key}")
+    print(f"[DEBUG] Main axes object: {ax}")
+    print(f"[DEBUG] Figure canvas: {fig.canvas}")
+    print()
 
     # Show instructions
     if instructions:
@@ -812,10 +950,97 @@ def make_track_from_image_interactive(
 
     # Show plot
     plt.tight_layout()
-    plt.show()
 
-    # Create result
-    if state['cancelled'] or not state['nodes']:
+    # Show the plot
+    if is_jupyter:
+        # JUPYTER MODE: Non-blocking approach
+        # The widget is already interactive, just display it and return immediately
+        # Store state in figure so user can retrieve it later
+        fig._track_builder_state = state
+
+        plt.show()
+        print()
+        print("=" * 70)
+        print("🎯 JUPYTER MODE - INTERACTIVE BUILDER")
+        print("=" * 70)
+        print("The plot is displayed above. It is ALREADY INTERACTIVE!")
+        print()
+        print("To build your track:")
+        print("  1. Click on the image to add nodes (red dots appear)")
+        print("  2. Press 'e' then click & drag to create edges (blue lines)")
+        print("  3. Press 'a' to return to ADD mode")
+        print()
+        print("To get your results, run this in a NEW cell:")
+        print()
+        print("  import matplotlib.pyplot as plt")
+        print("  from track_linearization import _build_track_from_state")
+        print("  state = plt.gcf()._track_builder_state")
+        print("  result = _build_track_from_state(state, scale=" + str(scale) + ")")
+        print("  print(result)")
+        print()
+        print("=" * 70)
+        print()
+
+        # Return a partial result with instructions
+        return {
+            'track_graph': None,
+            'node_positions': [],
+            'edges': [],
+            'pixel_positions': [],
+            '_jupyter_note': 'In Jupyter: Interact with plot above, then retrieve results using _build_track_from_state()',
+            '_state_location': 'Access state via: plt.gcf()._track_builder_state',
+        }
+
+    else:
+        # NON-JUPYTER: Regular blocking mode
+        try:
+            plt.show(block=True)  # Block until window is closed
+        except Exception as e:
+            print(f"Warning: matplotlib show() error: {e}")
+            print("Attempting to continue...")
+
+    # Print status after window closes
+    print("\n" + "=" * 70)
+    if state['finished']:
+        print("✓ Window closed via Finish command")
+    elif state['cancelled']:
+        print("✗ Window closed via Cancel command")
+    else:
+        print("✓ Window closed manually (that's fine!)")
+    print("=" * 70 + "\n")
+
+    # Use the helper function to build results
+    return _build_track_from_state(state, scale)
+
+
+def _build_track_from_state(state, scale=1.0):
+    """
+    Helper function to build track graph from interactive builder state.
+
+    This is used internally and can also be called by users in Jupyter
+    to retrieve results after interacting with the plot.
+
+    Parameters
+    ----------
+    state : dict
+        State dictionary from make_track_from_image_interactive containing:
+        - 'nodes': List of (x, y) pixel coordinates
+        - 'edges': List of (i, j) node index pairs
+        - 'cancelled': Whether user cancelled
+    scale : float, optional
+        Scale factor to convert pixel coordinates to real units (default 1.0)
+
+    Returns
+    -------
+    result : dict
+        Dictionary containing:
+        - 'track_graph': NetworkX graph or None
+        - 'node_positions': List of scaled (x, y) coordinates
+        - 'edges': List of (i, j) edge pairs
+        - 'pixel_positions': Original pixel coordinates
+    """
+    # Handle cancelled or empty state
+    if state.get('cancelled', False) or not state.get('nodes', []):
         return {
             'track_graph': None,
             'node_positions': [],

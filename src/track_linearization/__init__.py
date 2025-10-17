@@ -5,6 +5,7 @@ from track_linearization.core import (
     validate_track_graph,
 )
 from track_linearization.track_builders import (
+    _build_track_from_state,
     make_circular_track,
     make_figure8_track,
     make_linear_track,
@@ -12,6 +13,7 @@ from track_linearization.track_builders import (
     make_rectangular_track,
     make_tmaze_track,
     make_track_from_image_interactive,
+    make_track_from_points,
     make_wtrack,
     make_ymaze_track,
 )
