@@ -1017,10 +1017,14 @@ def _calculate_linear_position(
         [track_graph.nodes[node]["pos"] for node in start_node_id]
     )
 
-    linear_position = start_node_linear_position + (
-        np.linalg.norm(start_node_2D_position - projected_track_positions, axis=1)
-    )
-    linear_position[is_nan] = np.nan
+    # Handle empty position array edge case
+    if len(position) == 0:
+        linear_position = np.array([])
+    else:
+        linear_position = start_node_linear_position + (
+            np.linalg.norm(start_node_2D_position - projected_track_positions, axis=1)
+        )
+        linear_position[is_nan] = np.nan
 
     return (
         linear_position,

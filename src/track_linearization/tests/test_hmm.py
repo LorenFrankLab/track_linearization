@@ -217,9 +217,10 @@ class TestHMMEdgeCases:
 
         position = np.empty((0, 2))
 
-        # Empty positions should be handled gracefully
-        # Skip this test as it reveals an edge case bug in the implementation
-        pytest.skip("Empty position arrays cause broadcast error - known edge case")
+        result = get_linearized_position(position, track_graph, use_HMM=True)
+
+        # Should return empty dataframe
+        assert len(result) == 0
 
     def test_hmm_nan_positions(self):
         """Test HMM handles NaN in position data."""

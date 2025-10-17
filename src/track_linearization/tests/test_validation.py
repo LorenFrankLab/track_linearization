@@ -49,6 +49,145 @@ class TestCheckTrackGraphValidity:
         assert not report["is_connected"]
         assert any("not connected" in w for w in report["warnings"])
 
+    def test_empty_graph_no_nodes(self):
+        """Test validation of graph with no nodes."""
+        import networkx as nx
+
+        track = nx.Graph()
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "no nodes" in " ".join(report["errors"]).lower()
+        assert report["n_nodes"] == 0
+
+    def test_empty_graph_no_edges(self):
+        """Test validation of graph with nodes but no edges."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1, pos=(10, 0))
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "no edges" in " ".join(report["errors"]).lower()
+        assert report["n_edges"] == 0
+
+    def test_missing_pos_attribute_all_nodes(self):
+        """Test graph where all nodes are missing 'pos' attribute."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_edge(0, 1)
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "no nodes have 'pos'" in " ".join(report["errors"]).lower()
+
+    def test_missing_pos_attribute_some_nodes(self):
+        """Test graph where some nodes are missing 'pos' attribute."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1)  # Missing pos
+        track.add_edge(0, 1, distance=10, edge_id=0)
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "missing 'pos' attribute" in " ".join(report["errors"])
+
+    def test_invalid_pos_type(self):
+        """Test node with invalid 'pos' type."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos="invalid")  # String instead of coordinates
+        track.add_node(1, pos=(10, 0))
+        track.add_edge(0, 1, distance=10, edge_id=0)
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "not array-like" in " ".join(report["errors"])
+
+    def test_non_finite_coordinates(self):
+        """Test node with non-finite coordinates."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(np.nan, 0))  # NaN coordinate
+        track.add_node(1, pos=(10, np.inf))  # Inf coordinate
+        track.add_edge(0, 1, distance=10, edge_id=0)
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "invalid coordinates" in " ".join(report["errors"])
+
+    def test_missing_distance_attribute(self):
+        """Test edge missing 'distance' attribute."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1, pos=(10, 0))
+        track.add_edge(0, 1)  # Missing distance and edge_id
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "missing 'distance'" in " ".join(report["errors"])
+
+    def test_non_finite_distance(self):
+        """Test edge with non-finite distance."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1, pos=(10, 0))
+        track.add_edge(0, 1, distance=np.nan, edge_id=0)
+        report = check_track_graph_validity(track)
+
+        assert not report["valid"]
+        assert "invalid distance" in " ".join(report["errors"])
+
+    def test_zero_distance_warning(self):
+        """Test edge with zero distance generates warning."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1, pos=(0, 0))
+        track.add_edge(0, 1, distance=0.0, edge_id=0)
+        report = check_track_graph_validity(track)
+
+        assert report["valid"]  # Valid but has warning
+        assert any("zero or negative distance" in w for w in report["warnings"])
+
+    def test_negative_distance_warning(self):
+        """Test edge with negative distance generates warning."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1, pos=(10, 0))
+        track.add_edge(0, 1, distance=-5.0, edge_id=0)
+        report = check_track_graph_validity(track)
+
+        assert report["valid"]  # Valid but has warning
+        assert any("zero or negative distance" in w for w in report["warnings"])
+
+    def test_missing_edge_id_warning(self):
+        """Test edge missing 'edge_id' generates warning."""
+        import networkx as nx
+
+        track = nx.Graph()
+        track.add_node(0, pos=(0, 0))
+        track.add_node(1, pos=(10, 0))
+        track.add_edge(0, 1, distance=10.0)  # Missing edge_id
+        report = check_track_graph_validity(track)
+
+        assert report["valid"]  # Valid but has warning
+        assert any("missing 'edge_id'" in w for w in report["warnings"])
+
 
 class TestGetProjectionConfidence:
     """Tests for get_projection_confidence function."""
