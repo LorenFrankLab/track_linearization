@@ -1,4 +1,5 @@
 [![Test, Build, and Publish](https://github.com/LorenFrankLab/track_linearization/actions/workflows/release.yml/badge.svg)](https://github.com/LorenFrankLab/track_linearization/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/LorenFrankLab/track_linearization/branch/master/graph/badge.svg)](https://codecov.io/gh/LorenFrankLab/track_linearization)
 
 # track_linearization
 
