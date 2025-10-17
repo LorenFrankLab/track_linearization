@@ -39,6 +39,7 @@ make_actual_vs_linearized_position_movie : Create animation of linearization
 For detailed usage, see the tutorial notebook in `notebooks/track_linearization_tutorial.ipynb`
 or visit: https://github.com/edeno/track_linearization
 """
+
 # flake8: noqa
 from track_linearization.core import (
     get_linearized_position,

@@ -377,7 +377,9 @@ def validate_linearization(
         1.0 if track_report["valid"] else 0.0,  # Weight: 0.3
     ]
     weights = [0.4, 0.3, 0.3]
-    quality_score = sum(w * c for w, c in zip(weights, quality_components, strict=False))
+    quality_score = sum(
+        w * c for w, c in zip(weights, quality_components, strict=False)
+    )
 
     # Determine pass/fail
     passed = quality_score > 0.7 and len(warnings_list) == 0

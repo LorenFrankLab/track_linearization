@@ -619,7 +619,7 @@ def make_track_from_image_interactive(
         fontsize=11,
         ha="center",
         style="italic",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.7),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "lightgreen", "alpha": 0.7},
     )
 
     ax.set_xlabel("X (pixels)")
@@ -660,17 +660,17 @@ def make_track_from_image_interactive(
         if state["mode"] == "ADD":
             mode_text.set_text("Mode: ADD NODE (Click anywhere)")
             mode_text.set_bbox(
-                dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.7)
+                {"boxstyle": "round,pad=0.5", "facecolor": "lightgreen", "alpha": 0.7}
             )
         elif state["mode"] == "EDGE":
             mode_text.set_text("Mode: CREATE EDGE (Click & drag between nodes)")
             mode_text.set_bbox(
-                dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.7)
+                {"boxstyle": "round,pad=0.5", "facecolor": "lightblue", "alpha": 0.7}
             )
         elif state["mode"] == "DELETE":
             mode_text.set_text("Mode: DELETE NODE (Click on node)")
             mode_text.set_bbox(
-                dict(boxstyle="round,pad=0.5", facecolor="salmon", alpha=0.7)
+                {"boxstyle": "round,pad=0.5", "facecolor": "salmon", "alpha": 0.7}
             )
 
     def update_display():
@@ -698,7 +698,7 @@ def make_track_from_image_interactive(
                 ha="center",
                 va="bottom",
                 fontweight="bold",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="red", alpha=0.7),
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "red", "alpha": 0.7},
             )
             node_labels.append(label)
 
