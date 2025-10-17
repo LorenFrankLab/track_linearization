@@ -1029,7 +1029,9 @@ def make_track_from_image_interactive(
     return _build_track_from_state(state, scale)
 
 
-def _build_track_from_state(state: TrackBuilderState | dict[str, Any], scale: float = 1.0) -> dict[str, Any]:
+def _build_track_from_state(
+    state: TrackBuilderState | dict[str, Any], scale: float = 1.0
+) -> dict[str, Any]:
     """
     Helper function to build track graph from interactive builder state.
 
