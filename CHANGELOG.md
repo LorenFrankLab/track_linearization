@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.4.0] - 2025-01-16
+## [2.4.0] - 2025-10-16
 
 ### Added
 - **Track Builders Module** (`track_builders.py`):
@@ -70,12 +70,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Outlier detection uses robust statistics (median + MAD) instead of mean + std
 
 ### Fixed
-- Unused `fig` variables in plotting functions (now use `_` prefix)
-- Import sorting and organization per ruff standards
-- Regex pattern in pytest match statement (now uses raw string)
-- Dict literal style issues in track_builders.py (using `{}` instead of `dict()`)
-- Outlier detection false positives on uniform data
-- Interactive builder event loop blocking in Jupyter notebooks
+- **Type Annotations & IDE Support**: Improved type hints for better IDE autocomplete and type checking
+  - `edge_map` now accepts both integer and string segment IDs (e.g., `{0: "left_arm", 1: "right_arm"}`)
+  - `edge_spacing` now accepts tuples, lists, and numpy arrays (previously only lists)
+  - Achieved zero mypy errors in source code for improved code quality
+- Outlier detection false positives on uniform data (now uses robust statistics)
+- Interactive builder event loop blocking in Jupyter notebooks (non-blocking two-step workflow)
 
 ### Infrastructure
 - New GitHub Actions workflow structure:
