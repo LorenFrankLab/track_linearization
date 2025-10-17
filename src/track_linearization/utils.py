@@ -103,7 +103,7 @@ def plot_track_graph(
     draw_edge_labels: bool = False,
     show: bool = False,
     figsize: tuple[float, float] = (8, 8),
-    **kwds,
+    **kwds: Any,
 ) -> plt.Axes:
     """Plot a 2D visualization of the track graph.
 
@@ -257,7 +257,7 @@ def _plot_linear_segment(
             label_coords = (other_pos, edge_midpoint)
 
         ax.scatter(*label_coords, color="white", zorder=9, s=node_size, clip_on=False)
-        ax.text(*label_coords, edge_id, ha="center", va="center", zorder=10)
+        ax.text(*label_coords, str(edge_id), ha="center", va="center", zorder=10)
 
     # Add node labels
     ax.text(*start_coords, edge[0], ha="center", va="center", zorder=10)
@@ -367,10 +367,10 @@ def plot_graph_as_1D(
     # If no edge_order is given, then arange edges in the order passed to
     # construct the track graph
     if edge_order is None:
-        edge_order = np.asarray(track_graph.edges)
+        edge_order = list(track_graph.edges)
 
     n_edges = len(edge_order)
-    if isinstance(edge_spacing, int) | isinstance(edge_spacing, float):
+    if isinstance(edge_spacing, (int, float)):
         edge_spacing = [
             edge_spacing,
         ] * (n_edges - 1)
@@ -430,7 +430,7 @@ def _get_projected_track_position(
     track_segments = get_track_segments_from_graph(track_graph)
     projected_track_position = project_points_to_segment(track_segments, position)
     n_time = projected_track_position.shape[0]
-    return projected_track_position[(np.arange(n_time), track_segment_id)]
+    return projected_track_position[(np.arange(n_time), track_segment_id)]  # type: ignore[no-any-return]
 
 
 def make_actual_vs_linearized_position_movie(
@@ -516,7 +516,7 @@ def make_actual_vs_linearized_position_movie(
     axes[1].set_ylabel("y-position")
     axes[1].set_title("Linearized vs. Actual Position")
 
-    def _update_plot(time_ind):
+    def _update_plot(time_ind: int) -> tuple[Any, ...]:
         start_ind = max(0, time_ind - 33)
         time_slice = slice(start_ind, time_ind)
 

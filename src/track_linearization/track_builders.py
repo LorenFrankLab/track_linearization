@@ -5,13 +5,25 @@ designs, reducing setup time from hours to minutes.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
 from track_linearization.utils import make_track_graph
+
+
+class TrackBuilderState(TypedDict):
+    """State dictionary for interactive track builder."""
+
+    nodes: list[tuple[float, float]]
+    edges: list[tuple[int, int]]
+    mode: str
+    edge_start_node: int | None
+    edge_preview_line: Any | None
+    finished: bool
+    cancelled: bool
 
 
 def make_linear_track(
@@ -584,7 +596,7 @@ def make_track_from_image_interactive(
         is_jupyter = False
 
     # State variables
-    state = {
+    state: TrackBuilderState = {
         "nodes": [],  # List of (x, y) pixel coordinates
         "edges": [],  # List of (i, j) node index pairs
         "edge_start_node": None,  # For edge creation
@@ -598,7 +610,7 @@ def make_track_from_image_interactive(
     fig = plt.figure(figsize=(12, 11))
 
     # Main image axes
-    ax = fig.add_axes([0.05, 0.15, 0.9, 0.8])
+    ax = fig.add_axes((0.05, 0.15, 0.9, 0.8))
     ax.imshow(img, origin="upper")
 
     # Title with mode indicator
@@ -629,18 +641,18 @@ def make_track_from_image_interactive(
     if not is_jupyter:
         from matplotlib.widgets import Button
 
-        ax_finish = fig.add_axes([0.7, 0.02, 0.1, 0.05])
+        ax_finish = fig.add_axes((0.7, 0.02, 0.1, 0.05))
         btn_finish = Button(ax_finish, "Finish", color="lightgreen", hovercolor="green")
 
-        ax_cancel = fig.add_axes([0.82, 0.02, 0.1, 0.05])
+        ax_cancel = fig.add_axes((0.82, 0.02, 0.1, 0.05))
         btn_cancel = Button(ax_cancel, "Cancel", color="lightcoral", hovercolor="red")
 
-        def on_finish_click(event):
+        def on_finish_click(event: Any) -> None:
             state["finished"] = True
             print("\n✓ Finished! (via button) Creating track graph...")
             plt.close(fig)
 
-        def on_cancel_click(event):
+        def on_cancel_click(event: Any) -> None:
             state["cancelled"] = True
             print("\n✗ Cancelled (via button).")
             plt.close(fig)
@@ -652,10 +664,10 @@ def make_track_from_image_interactive(
     node_scatter = ax.scatter(
         [], [], c="red", s=100, zorder=10, marker="o", edgecolors="white", linewidths=2
     )
-    node_labels = []
-    edge_lines = []
+    node_labels: list[Any] = []
+    edge_lines: list[Any] = []
 
-    def update_mode_display():
+    def update_mode_display() -> None:
         """Update mode indicator text and color."""
         if state["mode"] == "ADD":
             mode_text.set_text("Mode: ADD NODE (Click anywhere)")
@@ -673,7 +685,7 @@ def make_track_from_image_interactive(
                 {"boxstyle": "round,pad=0.5", "facecolor": "salmon", "alpha": 0.7}
             )
 
-    def update_display():
+    def update_display() -> None:
         """Redraw nodes and edges."""
         # Update nodes
         if state["nodes"]:
@@ -731,7 +743,7 @@ def make_track_from_image_interactive(
         update_mode_display()
         fig.canvas.draw_idle()
 
-    def find_closest_node(x, y, max_distance=25):
+    def find_closest_node(x: float, y: float, max_distance: float = 25) -> int | None:
         """Find closest node to coordinates within max_distance pixels."""
         if not state["nodes"]:
             return None
@@ -743,7 +755,7 @@ def make_track_from_image_interactive(
             return closest_idx
         return None
 
-    def on_press(event):
+    def on_press(event: Any) -> None:
         """Handle mouse press."""
         if event.inaxes != ax:
             return
@@ -783,10 +795,10 @@ def make_track_from_image_interactive(
                     for i, j in state["edges"]
                     if i != closest and j != closest
                 ]
-                state["edges"] = [tuple(sorted([i, j])) for i, j in state["edges"]]
+                state["edges"] = [(min(i, j), max(i, j)) for i, j in state["edges"]]
                 update_display()
 
-    def on_motion(event):
+    def on_motion(event: Any) -> None:
         """Handle mouse motion for edge preview."""
         # Note: Don't print debug here - too spammy during mouse movement
         if event.inaxes != ax or state["finished"] or state["cancelled"]:
@@ -809,7 +821,7 @@ def make_track_from_image_interactive(
         state["edge_preview_line"] = line
         fig.canvas.draw_idle()
 
-    def on_release(event):
+    def on_release(event: Any) -> None:
         """Handle mouse release."""
         if event.inaxes != ax:
             return
@@ -834,7 +846,7 @@ def make_track_from_image_interactive(
         if closest is not None and closest != state["edge_start_node"]:
             # Create edge
             node1, node2 = state["edge_start_node"], closest
-            edge = tuple(sorted([node1, node2]))
+            edge = (min(node1, node2), max(node1, node2))
             if edge not in state["edges"]:
                 state["edges"].append(edge)
                 print(f"✓ Created edge: {node1} ↔ {node2}")
@@ -848,7 +860,7 @@ def make_track_from_image_interactive(
             state["edge_preview_line"] = None
         update_display()
 
-    def on_key(event):
+    def on_key(event: Any) -> None:
         """Handle key presses."""
 
         if event.key == "f":  # Finish
@@ -894,7 +906,7 @@ def make_track_from_image_interactive(
                 print(f"↶ Deleted last edge {edge}")
                 update_display()
 
-    def print_instructions():
+    def print_instructions() -> None:
         """Print usage instructions."""
         print("\n" + "=" * 70)
         print("INTERACTIVE TRACK BUILDER - CONTROLS")
@@ -960,7 +972,7 @@ def make_track_from_image_interactive(
         # JUPYTER MODE: Non-blocking approach
         # The widget is already interactive, just display it and return immediately
         # Store state in figure so user can retrieve it later
-        fig._track_builder_state = state
+        fig._track_builder_state = state  # type: ignore[attr-defined]
 
         plt.show()
         print()
@@ -1017,7 +1029,7 @@ def make_track_from_image_interactive(
     return _build_track_from_state(state, scale)
 
 
-def _build_track_from_state(state, scale=1.0):
+def _build_track_from_state(state: TrackBuilderState | dict[str, Any], scale: float = 1.0) -> dict[str, Any]:
     """
     Helper function to build track graph from interactive builder state.
 

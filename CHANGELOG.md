@@ -7,17 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2025-01-16
+
 ### Added
-- Pre-commit hooks configuration for automated code quality checks
-- Comprehensive CI/CD pipeline with quality, test, build, and publish jobs
-- Support for Python 3.13
-- PyPI Trusted Publishing (OIDC) support for secure releases
-- Automated GitHub release creation with changelog extraction
-- Notebook execution testing in CI
-- Modern dependency pinning with lower bounds following Scientific Python SPEC 0
-- Enhanced ruff configuration with numpy-specific and pandas-vet rules
-- Improved mypy configuration with test-specific overrides
-- pandas-stubs for better type checking
+- **Track Builders Module** (`track_builders.py`):
+  - `make_linear_track()` - Create simple linear tracks
+  - `make_circular_track()` - Create circular/annular tracks
+  - `make_tmaze_track()` - Create T-maze tracks for alternation tasks
+  - `make_plus_maze_track()` - Create plus/cross maze tracks
+  - `make_figure8_track()` - Create figure-8 tracks
+  - `make_wtrack()` - Create W-shaped tracks
+  - `make_rectangular_track()` - Create rectangular perimeter tracks
+  - `make_ymaze_track()` - Create Y-maze tracks with configurable angles
+  - `make_track_from_points()` - Create tracks from manual point specification
+  - `make_track_from_image_interactive()` - Interactive track builder from images (Jupyter-compatible)
+  - `_build_track_from_state()` - Helper for retrieving interactive builder results in Jupyter
+
+- **Validation & QC Module** (`validation.py`):
+  - `check_track_graph_validity()` - Validate track graph structure and attributes
+  - `get_projection_confidence()` - Calculate confidence scores for position projections
+  - `detect_linearization_outliers()` - Detect outliers using projection distance and jump detection
+  - `validate_linearization()` - Comprehensive quality assessment with scoring and recommendations
+
+- **Tutorial Notebooks**:
+  - `track_linearization_tutorial.ipynb` - Comprehensive pedagogical tutorial for basic usage
+  - `advanced_features_tutorial.ipynb` - Tutorial covering track builders, validation, and interactive features
+
+- **Core Functionality**:
+  - `project_1d_to_2d()` - Reverse mapping from 1D linear positions back to 2D coordinates
+  - Numba-optimized Viterbi algorithm for HMM inference (when numba available)
+  - Exposed `project_1d_to_2d` in package `__init__.py`
+
+- **Infrastructure**:
+  - Pre-commit hooks configuration for automated code quality checks
+  - Comprehensive CI/CD pipeline with quality, test, build, and publish jobs
+  - Support for Python 3.13
+  - PyPI Trusted Publishing (OIDC) support for secure releases
+  - Automated GitHub release creation with changelog extraction
+  - Notebook execution testing in CI
+  - Modern dependency pinning with lower bounds following Scientific Python SPEC 0
+  - Enhanced ruff configuration with numpy-specific and pandas-vet rules
+  - Improved mypy configuration with test-specific overrides
+  - pandas-stubs for better type checking
+  - Comprehensive test suite for track builders and validation (117 tests total)
 
 ### Changed
 - **BREAKING**: Dropped support for Python 3.9 (minimum version now 3.10)
@@ -27,15 +59,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - matplotlib >= 3.7 (was unpinned)
   - pandas >= 2.0 (was unpinned)
   - dask[array] >= 2023.5.0 (was unpinned, added array extra)
+  - networkx >= 3.2.1 (explicit minimum for compatibility)
 - Replaced deprecated pandas `.values` with `.to_numpy()` in utils module
 - Updated CI workflow to test Python 3.10, 3.11, 3.12, and 3.13
 - Replaced old test_package_build.yml with modern release.yml workflow
 - Fixed non-breaking hyphen character in error message
+- Enhanced `__init__.py` with comprehensive module docstring
+- Improved README with new features section and tutorial links
+- Interactive track builder uses two-step workflow in Jupyter (non-blocking)
+- Outlier detection uses robust statistics (median + MAD) instead of mean + std
 
 ### Fixed
 - Unused `fig` variables in plotting functions (now use `_` prefix)
 - Import sorting and organization per ruff standards
 - Regex pattern in pytest match statement (now uses raw string)
+- Dict literal style issues in track_builders.py (using `{}` instead of `dict()`)
+- Outlier detection false positives on uniform data
+- Interactive builder event loop blocking in Jupyter notebooks
 
 ### Infrastructure
 - New GitHub Actions workflow structure:
@@ -98,7 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HMM-based position classification
 - Visualization tools
 
-[Unreleased]: https://github.com/LorenFrankLab/track_linearization/compare/v2.3.2...HEAD
+[Unreleased]: https://github.com/LorenFrankLab/track_linearization/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/LorenFrankLab/track_linearization/compare/v2.3.2...v2.4.0
 [2.3.2]: https://github.com/LorenFrankLab/track_linearization/compare/v2.3.1...v2.3.2
 [2.3.1]: https://github.com/LorenFrankLab/track_linearization/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/LorenFrankLab/track_linearization/compare/v2.2.0...v2.3.0

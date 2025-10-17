@@ -165,7 +165,7 @@ def get_projection_confidence(
     # Calculate confidence using Gaussian-like decay
     confidence = np.exp(-(distances**2) / (2 * scale**2))
 
-    return confidence
+    return confidence  # type: ignore[no-any-return]
 
 
 def detect_linearization_outliers(

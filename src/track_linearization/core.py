@@ -187,7 +187,7 @@ def project_points_to_segment(
 
     np.clip(nx_param, 0.0, 1.0, out=nx_param)
 
-    return node1[np.newaxis, ...] + (
+    return node1[np.newaxis, ...] + (  # type: ignore[no-any-return]
         nx_param[:, :, np.newaxis] * segment_diff[np.newaxis, ...]
     )
 
@@ -209,7 +209,7 @@ def find_projected_point_distance(
     distances : np.ndarray, shape (n_time, n_segments)
         Euclidean distance from each point to its projection on each segment.
     """
-    return np.linalg.norm(
+    return np.linalg.norm(  # type: ignore[no-any-return]
         position[:, np.newaxis, :]
         - project_points_to_segment(track_segments, position),
         axis=2,
@@ -235,7 +235,7 @@ def find_nearest_segment(
         Index of the nearest track segment for each time point.
     """
     distance = find_projected_point_distance(track_segments, position)
-    return np.argmin(distance, axis=1)
+    return np.argmin(distance, axis=1)  # type: ignore[no-any-return]
 
 
 def euclidean_distance_change(position: np.ndarray) -> np.ndarray:
@@ -333,7 +333,7 @@ def route_distance(
 
     track_graph.remove_nodes_from(node_names)  # Clean up graph
 
-    return dist_matrix_slice
+    return dist_matrix_slice  # type: ignore[no-any-return]
 
 
 def batch(n_samples: int, batch_size: int = 1) -> Iterator[range]:
@@ -355,7 +355,7 @@ def batch(n_samples: int, batch_size: int = 1) -> Iterator[range]:
         yield range(ind, min(ind + batch_size, n_samples))
 
 
-@dask.delayed
+@dask.delayed  # type: ignore[misc]
 def batch_route_distance(
     track_graph: "Graph",
     projected_track_position_t: np.ndarray,
@@ -414,7 +414,7 @@ def route_distance_change(position: np.ndarray, track_graph: Graph) -> np.ndarra
     projected_track_position = project_points_to_segment(track_segments, position)
     n_segments = len(track_segments)
 
-    all_distances_results: list[np.ndarray | dask.delayed.Delayed] = [
+    all_distances_results: list[np.ndarray | Any] = [
         np.full((1, n_segments, n_segments), np.nan)
     ]
 
@@ -462,7 +462,7 @@ def calculate_position_likelihood(
     projected_position_distance = find_projected_point_distance(
         track_segments, position
     )
-    return np.exp(-0.5 * (projected_position_distance / sigma) ** 2) / (
+    return np.exp(-0.5 * (projected_position_distance / sigma) ** 2) / (  # type: ignore[no-any-return]
         np.sqrt(2 * np.pi) * sigma
     )
 
@@ -484,7 +484,7 @@ def normalize_to_probability(x: np.ndarray, axis: int = -1) -> np.ndarray:
         If a sum along the axis is 0, the original values in that slice will
         result in NaNs or Infs after division.
     """
-    return x / x.sum(axis=axis, keepdims=True)
+    return x / x.sum(axis=axis, keepdims=True)  # type: ignore[no-any-return]
 
 
 def calculate_empirical_state_transition(
@@ -607,7 +607,7 @@ def viterbi_no_numba(
 
 if NUMBA_AVAILABLE:
 
-    @numba.njit(cache=True)
+    @numba.njit(cache=True)  # type: ignore[misc]
     def viterbi(
         initial_conditions: np.ndarray,
         state_transition: np.ndarray,
@@ -980,21 +980,21 @@ def _calculate_linear_position(
     edge_spacing_list = _normalize_edge_spacing(edge_spacing, len(edge_order))
 
     counter = 0.0
-    start_node_linear_position = []
+    start_node_linear_position_list: list[float] = []
 
     for ind, edge in enumerate(edge_order):
-        start_node_linear_position.append(counter)
+        start_node_linear_position_list.append(counter)
 
         try:
             counter += track_graph.edges[edge]["distance"] + edge_spacing_list[ind]
         except IndexError:
             pass
 
-    start_node_linear_position = np.asarray(start_node_linear_position)
+    start_node_linear_position = np.asarray(start_node_linear_position_list)
 
     track_segment_id_to_start_node_linear_position = {
         track_graph.edges[e]["edge_id"]: snlp
-        for e, snlp in zip(edge_order, start_node_linear_position, strict=True)
+        for e, snlp in zip(edge_order, start_node_linear_position_list, strict=True)
     }
 
     start_node_linear_position = np.asarray(
@@ -1301,4 +1301,4 @@ def project_1d_to_2d(
 
     # propagate NaNs from the input
     coords[nan_mask] = np.nan
-    return coords
+    return coords  # type: ignore[no-any-return]
