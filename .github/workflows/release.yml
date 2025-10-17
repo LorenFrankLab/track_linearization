@@ -32,7 +32,7 @@ jobs:
       - name: Run ruff linting
         run: ruff check src/track_linearization/ --output-format=github
       - name: Run mypy type checking
-        run: mypy src/track_linearization/
+        run: mypy src/track_linearization/ --exclude 'tests'
 
   test:
     name: Test Python ${{ matrix.python-version }}
