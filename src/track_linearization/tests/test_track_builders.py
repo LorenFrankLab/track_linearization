@@ -88,9 +88,7 @@ class TestMakeTMazeTrack:
 
     def test_custom_arm_spacing(self):
         """Test T-maze with custom arm spacing."""
-        track = make_tmaze_track(
-            stem_length=40.0, arm_length=20.0, arm_spacing=60.0
-        )
+        track = make_tmaze_track(stem_length=40.0, arm_length=20.0, arm_spacing=60.0)
 
         # Get left and right arm end positions
         positions = [data["pos"] for _, data in track.nodes(data=True)]
@@ -187,9 +185,7 @@ class TestMakeRectangularTrack:
 
     def test_custom_start_corner(self):
         """Test rectangular track with custom start corner."""
-        track = make_rectangular_track(
-            width=40.0, height=30.0, start_corner=(10, 20)
-        )
+        track = make_rectangular_track(width=40.0, height=30.0, start_corner=(10, 20))
 
         # First node should be at start corner
         first_node_pos = track.nodes[0]["pos"]
@@ -215,15 +211,15 @@ class TestMakeYMazeTrack:
         track = make_ymaze_track(arm_length=30.0, arm_angle_deg=120.0)
 
         # Get arm end positions
-        positions = [data["pos"] for _, data in track.nodes(data=True)][1:]  # Skip center
+        positions = [data["pos"] for _, data in track.nodes(data=True)][
+            1:
+        ]  # Skip center
 
         # Calculate angles from center
         angles = [np.arctan2(p[1], p[0]) for p in positions]
 
         # Check angle differences (should be ~120° = 2π/3 radians)
-        angle_diffs = [
-            np.abs(angles[i] - angles[i - 1]) for i in range(1, len(angles))
-        ]
+        angle_diffs = [np.abs(angles[i] - angles[i - 1]) for i in range(1, len(angles))]
         expected_diff = np.deg2rad(120.0)
 
         # At least one pair should be close to 120°

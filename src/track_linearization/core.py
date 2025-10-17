@@ -631,7 +631,8 @@ if NUMBA_AVAILABLE:
         # recursion
         for time_ind in range(1, n_time):
             prior = (
-                posterior_prob[time_ind - 1][:, np.newaxis] + log_state_transition[time_ind]
+                posterior_prob[time_ind - 1][:, np.newaxis]
+                + log_state_transition[time_ind]
             )
 
             for state_ind in range(n_states):  # current state `j`

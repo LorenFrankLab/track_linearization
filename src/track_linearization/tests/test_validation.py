@@ -109,10 +109,18 @@ class TestDetectLinearizationOutliers:
         track = make_track_graph([(0, 0), (100, 0)], [(0, 1)])
 
         # Mix of on-track and far-from-track positions
-        positions = np.array([
-            [10, 0], [20, 0], [30, 0], [40, 50],  # Last one is outlier
-            [50, 0], [60, 0], [70, 0], [80, 0]
-        ])
+        positions = np.array(
+            [
+                [10, 0],
+                [20, 0],
+                [30, 0],
+                [40, 50],  # Last one is outlier
+                [50, 0],
+                [60, 0],
+                [70, 0],
+                [80, 0],
+            ]
+        )
         result = get_linearized_position(positions, track)
 
         report = detect_linearization_outliers(positions, track, result)
@@ -125,10 +133,9 @@ class TestDetectLinearizationOutliers:
         track = make_track_graph([(0, 0), (100, 0)], [(0, 1)])
 
         # Positions with a large jump
-        positions = np.array([
-            [10, 0], [15, 0], [20, 0], [90, 0],  # Large jump to 90
-            [92, 0], [94, 0]
-        ])
+        positions = np.array(
+            [[10, 0], [15, 0], [20, 0], [90, 0], [92, 0], [94, 0]]  # Large jump to 90
+        )
         result = get_linearized_position(positions, track)
 
         report = detect_linearization_outliers(positions, track, result, threshold=2.0)

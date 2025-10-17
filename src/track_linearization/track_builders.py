@@ -14,7 +14,9 @@ import numpy as np
 from track_linearization.utils import make_track_graph
 
 
-def make_linear_track(length: float, start_pos: tuple[float, float] = (0, 0)) -> nx.Graph:
+def make_linear_track(
+    length: float, start_pos: tuple[float, float] = (0, 0)
+) -> nx.Graph:
     """Create a simple straight linear track.
 
     Parameters
@@ -287,12 +289,8 @@ def make_figure8_track(
     right_nodes = list(range(offset, offset + n_segments_per_loop))
 
     # Find nodes closest to y=0
-    left_center_node = min(
-        left_nodes, key=lambda i: abs(node_positions[i][1])
-    )
-    right_center_node = min(
-        right_nodes, key=lambda i: abs(node_positions[i][1])
-    )
+    left_center_node = min(left_nodes, key=lambda i: abs(node_positions[i][1]))
+    right_center_node = min(right_nodes, key=lambda i: abs(node_positions[i][1]))
 
     edges.append((left_center_node, right_center_node))
 
@@ -493,16 +491,18 @@ def make_track_from_points(
 
     try:
         track_graph = make_track_graph(scaled_positions, edges)
-        print(f"✓ Created track with {len(scaled_positions)} nodes and {len(edges)} edges")
+        print(
+            f"✓ Created track with {len(scaled_positions)} nodes and {len(edges)} edges"
+        )
     except Exception as e:
         print(f"✗ Error creating track: {e}")
         track_graph = None
 
     return {
-        'track_graph': track_graph,
-        'node_positions': scaled_positions,
-        'edges': edges,
-        'pixel_positions': node_positions,
+        "track_graph": track_graph,
+        "node_positions": scaled_positions,
+        "edges": edges,
+        "pixel_positions": node_positions,
     }
 
 
@@ -568,7 +568,7 @@ def make_track_from_image_interactive(
         try:
             img = plt.imread(str(image_path))
         except Exception as e:
-            raise ValueError(f"Failed to load image from {image_path}: {e}")
+            raise ValueError(f"Failed to load image from {image_path}: {e}") from e
     elif image_array is not None:
         img = image_array
     else:
@@ -577,20 +577,21 @@ def make_track_from_image_interactive(
     # Detect if we're in Jupyter early
     try:
         from IPython import get_ipython
+
         ipython = get_ipython()
-        is_jupyter = ipython is not None and 'IPKernelApp' in ipython.config
-    except:
+        is_jupyter = ipython is not None and "IPKernelApp" in ipython.config
+    except Exception:
         is_jupyter = False
 
     # State variables
     state = {
-        'nodes': [],  # List of (x, y) pixel coordinates
-        'edges': [],  # List of (i, j) node index pairs
-        'edge_start_node': None,  # For edge creation
-        'edge_preview_line': None,  # Preview line while dragging
-        'finished': False,
-        'cancelled': False,
-        'mode': 'ADD',  # 'ADD', 'EDGE', 'DELETE'
+        "nodes": [],  # List of (x, y) pixel coordinates
+        "edges": [],  # List of (i, j) node index pairs
+        "edge_start_node": None,  # For edge creation
+        "edge_preview_line": None,  # Preview line while dragging
+        "finished": False,
+        "cancelled": False,
+        "mode": "ADD",  # 'ADD', 'EDGE', 'DELETE'
     }
 
     # Create figure
@@ -598,19 +599,27 @@ def make_track_from_image_interactive(
 
     # Main image axes
     ax = fig.add_axes([0.05, 0.15, 0.9, 0.8])
-    ax.imshow(img, origin='upper')
+    ax.imshow(img, origin="upper")
 
     # Title with mode indicator
-    title_text = ax.text(
-        0.5, 1.02, "Interactive Track Builder",
+    ax.text(
+        0.5,
+        1.02,
+        "Interactive Track Builder",
         transform=ax.transAxes,
-        fontsize=14, fontweight='bold', ha='center'
+        fontsize=14,
+        fontweight="bold",
+        ha="center",
     )
     mode_text = ax.text(
-        0.5, 0.98, "Mode: ADD NODE (Click to add)",
+        0.5,
+        0.98,
+        "Mode: ADD NODE (Click to add)",
         transform=ax.transAxes,
-        fontsize=11, ha='center', style='italic',
-        bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.7)
+        fontsize=11,
+        ha="center",
+        style="italic",
+        bbox=dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.7),
     )
 
     ax.set_xlabel("X (pixels)")
@@ -621,18 +630,18 @@ def make_track_from_image_interactive(
         from matplotlib.widgets import Button
 
         ax_finish = fig.add_axes([0.7, 0.02, 0.1, 0.05])
-        btn_finish = Button(ax_finish, 'Finish', color='lightgreen', hovercolor='green')
+        btn_finish = Button(ax_finish, "Finish", color="lightgreen", hovercolor="green")
 
         ax_cancel = fig.add_axes([0.82, 0.02, 0.1, 0.05])
-        btn_cancel = Button(ax_cancel, 'Cancel', color='lightcoral', hovercolor='red')
+        btn_cancel = Button(ax_cancel, "Cancel", color="lightcoral", hovercolor="red")
 
         def on_finish_click(event):
-            state['finished'] = True
+            state["finished"] = True
             print("\n✓ Finished! (via button) Creating track graph...")
             plt.close(fig)
 
         def on_cancel_click(event):
-            state['cancelled'] = True
+            state["cancelled"] = True
             print("\n✗ Cancelled (via button).")
             plt.close(fig)
 
@@ -640,27 +649,35 @@ def make_track_from_image_interactive(
         btn_cancel.on_clicked(on_cancel_click)
 
     # Storage for plot elements
-    node_scatter = ax.scatter([], [], c='red', s=100, zorder=10, marker='o', edgecolors='white', linewidths=2)
+    node_scatter = ax.scatter(
+        [], [], c="red", s=100, zorder=10, marker="o", edgecolors="white", linewidths=2
+    )
     node_labels = []
     edge_lines = []
 
     def update_mode_display():
         """Update mode indicator text and color."""
-        if state['mode'] == 'ADD':
+        if state["mode"] == "ADD":
             mode_text.set_text("Mode: ADD NODE (Click anywhere)")
-            mode_text.set_bbox(dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.7))
-        elif state['mode'] == 'EDGE':
+            mode_text.set_bbox(
+                dict(boxstyle="round,pad=0.5", facecolor="lightgreen", alpha=0.7)
+            )
+        elif state["mode"] == "EDGE":
             mode_text.set_text("Mode: CREATE EDGE (Click & drag between nodes)")
-            mode_text.set_bbox(dict(boxstyle='round,pad=0.5', facecolor='lightblue', alpha=0.7))
-        elif state['mode'] == 'DELETE':
+            mode_text.set_bbox(
+                dict(boxstyle="round,pad=0.5", facecolor="lightblue", alpha=0.7)
+            )
+        elif state["mode"] == "DELETE":
             mode_text.set_text("Mode: DELETE NODE (Click on node)")
-            mode_text.set_bbox(dict(boxstyle='round,pad=0.5', facecolor='salmon', alpha=0.7))
+            mode_text.set_bbox(
+                dict(boxstyle="round,pad=0.5", facecolor="salmon", alpha=0.7)
+            )
 
     def update_display():
         """Redraw nodes and edges."""
         # Update nodes
-        if state['nodes']:
-            xs, ys = zip(*state['nodes'])
+        if state["nodes"]:
+            xs, ys = zip(*state["nodes"], strict=False)
             node_scatter.set_offsets(np.c_[xs, ys])
         else:
             node_scatter.set_offsets(np.empty((0, 2)))
@@ -671,10 +688,18 @@ def make_track_from_image_interactive(
         node_labels.clear()
 
         # Add node labels
-        for i, (x, y) in enumerate(state['nodes']):
-            label = ax.text(x, y + 15, str(i), color='white', fontsize=10,
-                          ha='center', va='bottom', fontweight='bold',
-                          bbox=dict(boxstyle='round,pad=0.3', facecolor='red', alpha=0.7))
+        for i, (x, y) in enumerate(state["nodes"]):
+            label = ax.text(
+                x,
+                y + 15,
+                str(i),
+                color="white",
+                fontsize=10,
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="red", alpha=0.7),
+            )
             node_labels.append(label)
 
         # Clear old edges
@@ -683,17 +708,23 @@ def make_track_from_image_interactive(
         edge_lines.clear()
 
         # Draw edges
-        for i, j in state['edges']:
-            if i < len(state['nodes']) and j < len(state['nodes']):
-                x1, y1 = state['nodes'][i]
-                x2, y2 = state['nodes'][j]
-                line, = ax.plot([x1, x2], [y1, y2], 'b-', linewidth=3, alpha=0.6, zorder=5)
+        for i, j in state["edges"]:
+            if i < len(state["nodes"]) and j < len(state["nodes"]):
+                x1, y1 = state["nodes"][i]
+                x2, y2 = state["nodes"][j]
+                (line,) = ax.plot(
+                    [x1, x2], [y1, y2], "b-", linewidth=3, alpha=0.6, zorder=5
+                )
                 edge_lines.append(line)
 
         # Highlight node being used for edge
-        if state['edge_start_node'] is not None and state['edge_start_node'] < len(state['nodes']):
-            x, y = state['nodes'][state['edge_start_node']]
-            circle = plt.Circle((x, y), 20, color='yellow', fill=False, linewidth=3, zorder=11)
+        if state["edge_start_node"] is not None and state["edge_start_node"] < len(
+            state["nodes"]
+        ):
+            x, y = state["nodes"][state["edge_start_node"]]
+            circle = plt.Circle(
+                (x, y), 20, color="yellow", fill=False, linewidth=3, zorder=11
+            )
             ax.add_patch(circle)
             edge_lines.append(circle)
 
@@ -702,9 +733,11 @@ def make_track_from_image_interactive(
 
     def find_closest_node(x, y, max_distance=25):
         """Find closest node to coordinates within max_distance pixels."""
-        if not state['nodes']:
+        if not state["nodes"]:
             return None
-        distances = [np.sqrt((x - nx)**2 + (y - ny)**2) for nx, ny in state['nodes']]
+        distances = [
+            np.sqrt((x - nx) ** 2 + (y - ny) ** 2) for nx, ny in state["nodes"]
+        ]
         closest_idx = int(np.argmin(distances))
         if distances[closest_idx] < max_distance:
             return closest_idx
@@ -712,60 +745,53 @@ def make_track_from_image_interactive(
 
     def on_press(event):
         """Handle mouse press."""
-        print(f"[DEBUG] on_press fired! event.inaxes={event.inaxes}, event.button={event.button}")
-
         if event.inaxes != ax:
-            print(f"[DEBUG] Click not in main axes (event.inaxes={event.inaxes}, ax={ax})")
             return
 
-        if state['finished'] or state['cancelled']:
-            print(f"[DEBUG] State already finished or cancelled")
+        if state["finished"] or state["cancelled"]:
             return
 
         x, y = event.xdata, event.ydata
-        print(f"[DEBUG] Click coordinates: x={x}, y={y}")
-
         if x is None or y is None:
-            print(f"[DEBUG] Coordinates are None - click outside data area")
             return
 
         # Check which mode we're in
-        if state['mode'] == 'ADD':
+        if state["mode"] == "ADD":
             # Add a new node
-            state['nodes'].append((x, y))
+            state["nodes"].append((x, y))
             print(f"✓ Added node {len(state['nodes'])-1} at ({x:.1f}, {y:.1f})")
             update_display()
 
-        elif state['mode'] == 'EDGE':
+        elif state["mode"] == "EDGE":
             # Start edge creation by finding nearest node
             closest = find_closest_node(x, y)
             if closest is not None:
-                state['edge_start_node'] = closest
+                state["edge_start_node"] = closest
                 print(f"• Starting edge from node {closest}...")
                 update_display()
 
-        elif state['mode'] == 'DELETE':
+        elif state["mode"] == "DELETE":
             # Delete closest node
             closest = find_closest_node(x, y)
             if closest is not None:
-                state['nodes'].pop(closest)
+                state["nodes"].pop(closest)
                 print(f"✗ Deleted node {closest}")
 
                 # Remove and renumber edges
-                state['edges'] = [
-                    (i if i < closest else i-1, j if j < closest else j-1)
-                    for i, j in state['edges']
+                state["edges"] = [
+                    (i if i < closest else i - 1, j if j < closest else j - 1)
+                    for i, j in state["edges"]
                     if i != closest and j != closest
                 ]
-                state['edges'] = [tuple(sorted([i, j])) for i, j in state['edges']]
+                state["edges"] = [tuple(sorted([i, j])) for i, j in state["edges"]]
                 update_display()
 
     def on_motion(event):
         """Handle mouse motion for edge preview."""
         # Note: Don't print debug here - too spammy during mouse movement
-        if event.inaxes != ax or state['finished'] or state['cancelled']:
+        if event.inaxes != ax or state["finished"] or state["cancelled"]:
             return
-        if state['mode'] != 'EDGE' or state['edge_start_node'] is None:
+        if state["mode"] != "EDGE" or state["edge_start_node"] is None:
             return
 
         x, y = event.xdata, event.ydata
@@ -773,111 +799,98 @@ def make_track_from_image_interactive(
             return
 
         # Remove old preview line
-        if state['edge_preview_line'] is not None:
-            state['edge_preview_line'].remove()
-            state['edge_preview_line'] = None
+        if state["edge_preview_line"] is not None:
+            state["edge_preview_line"].remove()
+            state["edge_preview_line"] = None
 
         # Draw preview line from start node to cursor
-        x1, y1 = state['nodes'][state['edge_start_node']]
-        line, = ax.plot([x1, x], [y1, y], 'y--', linewidth=2, alpha=0.7, zorder=6)
-        state['edge_preview_line'] = line
+        x1, y1 = state["nodes"][state["edge_start_node"]]
+        (line,) = ax.plot([x1, x], [y1, y], "y--", linewidth=2, alpha=0.7, zorder=6)
+        state["edge_preview_line"] = line
         fig.canvas.draw_idle()
 
     def on_release(event):
         """Handle mouse release."""
-        print(f"[DEBUG] on_release fired! event.inaxes={event.inaxes}, event.button={event.button}")
-
         if event.inaxes != ax:
-            print(f"[DEBUG] Release not in main axes")
             return
 
-        if state['finished'] or state['cancelled']:
-            print(f"[DEBUG] State already finished or cancelled")
+        if state["finished"] or state["cancelled"]:
             return
 
-        if state['mode'] != 'EDGE' or state['edge_start_node'] is None:
-            print(f"[DEBUG] Not in EDGE mode or no start node (mode={state['mode']}, start_node={state['edge_start_node']})")
+        if state["mode"] != "EDGE" or state["edge_start_node"] is None:
             return
 
         x, y = event.xdata, event.ydata
-        print(f"[DEBUG] Release coordinates: x={x}, y={y}")
-
         if x is None or y is None:
-            print(f"[DEBUG] Release coordinates are None")
-            state['edge_start_node'] = None
-            if state['edge_preview_line'] is not None:
-                state['edge_preview_line'].remove()
-                state['edge_preview_line'] = None
+            state["edge_start_node"] = None
+            if state["edge_preview_line"] is not None:
+                state["edge_preview_line"].remove()
+                state["edge_preview_line"] = None
             update_display()
             return
 
         # Find end node
         closest = find_closest_node(x, y)
-        print(f"[DEBUG] Closest node to release: {closest}")
-
-        if closest is not None and closest != state['edge_start_node']:
+        if closest is not None and closest != state["edge_start_node"]:
             # Create edge
-            node1, node2 = state['edge_start_node'], closest
+            node1, node2 = state["edge_start_node"], closest
             edge = tuple(sorted([node1, node2]))
-            if edge not in state['edges']:
-                state['edges'].append(edge)
+            if edge not in state["edges"]:
+                state["edges"].append(edge)
                 print(f"✓ Created edge: {node1} ↔ {node2}")
             else:
                 print(f"⚠ Edge {node1} ↔ {node2} already exists")
 
         # Clean up
-        state['edge_start_node'] = None
-        if state['edge_preview_line'] is not None:
-            state['edge_preview_line'].remove()
-            state['edge_preview_line'] = None
+        state["edge_start_node"] = None
+        if state["edge_preview_line"] is not None:
+            state["edge_preview_line"].remove()
+            state["edge_preview_line"] = None
         update_display()
 
     def on_key(event):
         """Handle key presses."""
-        # Debug: print any key press
-        if event.key:
-            print(f"[DEBUG] Key detected: '{event.key}'")
 
-        if event.key == 'f':  # Finish
-            state['finished'] = True
+        if event.key == "f":  # Finish
+            state["finished"] = True
             print("\n✓ Finished! Creating track graph...")
             print("   Closing window...")
             plt.close(fig)
             print("   Window closed.")
-        elif event.key == 'q':  # Quit
-            state['cancelled'] = True
+        elif event.key == "q":  # Quit
+            state["cancelled"] = True
             print("\n✗ Cancelled.")
             plt.close(fig)
-        elif event.key == 'h':  # Help
+        elif event.key == "h":  # Help
             print_instructions()
-        elif event.key == 'a':  # Switch to ADD mode
-            state['mode'] = 'ADD'
-            state['edge_start_node'] = None
-            if state['edge_preview_line'] is not None:
-                state['edge_preview_line'].remove()
-                state['edge_preview_line'] = None
+        elif event.key == "a":  # Switch to ADD mode
+            state["mode"] = "ADD"
+            state["edge_start_node"] = None
+            if state["edge_preview_line"] is not None:
+                state["edge_preview_line"].remove()
+                state["edge_preview_line"] = None
             print("→ Switched to ADD NODE mode")
             update_display()
-        elif event.key == 'e':  # Switch to EDGE mode
-            state['mode'] = 'EDGE'
+        elif event.key == "e":  # Switch to EDGE mode
+            state["mode"] = "EDGE"
             print("→ Switched to CREATE EDGE mode (click and drag between nodes)")
             update_display()
-        elif event.key == 'x':  # Switch to DELETE mode
-            state['mode'] = 'DELETE'
-            state['edge_start_node'] = None
-            if state['edge_preview_line'] is not None:
-                state['edge_preview_line'].remove()
-                state['edge_preview_line'] = None
+        elif event.key == "x":  # Switch to DELETE mode
+            state["mode"] = "DELETE"
+            state["edge_start_node"] = None
+            if state["edge_preview_line"] is not None:
+                state["edge_preview_line"].remove()
+                state["edge_preview_line"] = None
             print("→ Switched to DELETE NODE mode")
             update_display()
-        elif event.key == 'u':  # Undo last node
-            if state['nodes']:
-                removed = state['nodes'].pop()
+        elif event.key == "u":  # Undo last node
+            if state["nodes"]:
+                state["nodes"].pop()
                 print(f"↶ Undid last node. {len(state['nodes'])} nodes remaining.")
                 update_display()
-        elif event.key == 'backspace' or event.key == 'd':  # Delete last edge
-            if state['edges']:
-                edge = state['edges'].pop()
+        elif event.key == "backspace" or event.key == "d":  # Delete last edge
+            if state["edges"]:
+                edge = state["edges"].pop()
                 print(f"↶ Deleted last edge {edge}")
                 update_display()
 
@@ -927,19 +940,10 @@ def make_track_from_image_interactive(
         print("=" * 70 + "\n")
 
     # Connect event handlers
-    cid_press = fig.canvas.mpl_connect('button_press_event', on_press)
-    cid_release = fig.canvas.mpl_connect('button_release_event', on_release)
-    cid_motion = fig.canvas.mpl_connect('motion_notify_event', on_motion)
-    cid_key = fig.canvas.mpl_connect('key_press_event', on_key)
-
-    print(f"[DEBUG] Event handlers connected:")
-    print(f"  - button_press_event: {cid_press}")
-    print(f"  - button_release_event: {cid_release}")
-    print(f"  - motion_notify_event: {cid_motion}")
-    print(f"  - key_press_event: {cid_key}")
-    print(f"[DEBUG] Main axes object: {ax}")
-    print(f"[DEBUG] Figure canvas: {fig.canvas}")
-    print()
+    fig.canvas.mpl_connect("button_press_event", on_press)
+    fig.canvas.mpl_connect("button_release_event", on_release)
+    fig.canvas.mpl_connect("motion_notify_event", on_motion)
+    fig.canvas.mpl_connect("key_press_event", on_key)
 
     # Show instructions
     if instructions:
@@ -983,12 +987,12 @@ def make_track_from_image_interactive(
 
         # Return a partial result with instructions
         return {
-            'track_graph': None,
-            'node_positions': [],
-            'edges': [],
-            'pixel_positions': [],
-            '_jupyter_note': 'In Jupyter: Interact with plot above, then retrieve results using _build_track_from_state()',
-            '_state_location': 'Access state via: plt.gcf()._track_builder_state',
+            "track_graph": None,
+            "node_positions": [],
+            "edges": [],
+            "pixel_positions": [],
+            "_jupyter_note": "In Jupyter: Interact with plot above, then retrieve results using _build_track_from_state()",
+            "_state_location": "Access state via: plt.gcf()._track_builder_state",
         }
 
     else:
@@ -1001,9 +1005,9 @@ def make_track_from_image_interactive(
 
     # Print status after window closes
     print("\n" + "=" * 70)
-    if state['finished']:
+    if state["finished"]:
         print("✓ Window closed via Finish command")
-    elif state['cancelled']:
+    elif state["cancelled"]:
         print("✗ Window closed via Cancel command")
     else:
         print("✓ Window closed manually (that's fine!)")
@@ -1040,30 +1044,32 @@ def _build_track_from_state(state, scale=1.0):
         - 'pixel_positions': Original pixel coordinates
     """
     # Handle cancelled or empty state
-    if state.get('cancelled', False) or not state.get('nodes', []):
+    if state.get("cancelled", False) or not state.get("nodes", []):
         return {
-            'track_graph': None,
-            'node_positions': [],
-            'edges': [],
-            'pixel_positions': [],
+            "track_graph": None,
+            "node_positions": [],
+            "edges": [],
+            "pixel_positions": [],
         }
 
     # Scale coordinates
-    pixel_positions = state['nodes'].copy()
-    scaled_positions = [(x * scale, y * scale) for x, y in state['nodes']]
+    pixel_positions = state["nodes"].copy()
+    scaled_positions = [(x * scale, y * scale) for x, y in state["nodes"]]
 
     # Create track graph
     try:
-        track_graph = make_track_graph(scaled_positions, state['edges'])
-        print(f"\n✓ Created track with {len(scaled_positions)} nodes and {len(state['edges'])} edges")
+        track_graph = make_track_graph(scaled_positions, state["edges"])
+        print(
+            f"\n✓ Created track with {len(scaled_positions)} nodes and {len(state['edges'])} edges"
+        )
         print(f"   Scale factor: {scale} (units per pixel)")
     except Exception as e:
         print(f"\n✗ Error creating track graph: {e}")
         track_graph = None
 
     return {
-        'track_graph': track_graph,
-        'node_positions': scaled_positions,
-        'edges': state['edges'],
-        'pixel_positions': pixel_positions,
+        "track_graph": track_graph,
+        "node_positions": scaled_positions,
+        "edges": state["edges"],
+        "pixel_positions": pixel_positions,
     }

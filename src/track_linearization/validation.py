@@ -4,7 +4,6 @@ This module provides tools to validate linearization quality, detect outliers,
 and assess confidence in position projections.
 """
 
-import warnings
 from typing import Any
 
 import networkx as nx
@@ -87,7 +86,9 @@ def check_track_graph_validity(track_graph: nx.Graph) -> dict[str, Any]:
             if not np.isfinite(dist):
                 errors.append(f"Edge {edge} has invalid distance: {dist}")
             elif dist <= 0:
-                warnings_list.append(f"Edge {edge} has zero or negative distance: {dist}")
+                warnings_list.append(
+                    f"Edge {edge} has zero or negative distance: {dist}"
+                )
 
     if len(edge_ids) < n_edges:
         missing = n_edges - len(edge_ids)
@@ -151,7 +152,7 @@ def get_projection_confidence(
 
     # Get projected positions
     proj_cols = [c for c in linearization_result.columns if "projected" in c]
-    projected = linearization_result[proj_cols].values
+    projected = linearization_result[proj_cols].to_numpy()
 
     # Calculate distances
     distances = np.linalg.norm(position - projected, axis=1)
@@ -212,18 +213,17 @@ def detect_linearization_outliers(
 
     # Get projected positions
     proj_cols = [c for c in linearization_result.columns if "projected" in c]
-    projected = linearization_result[proj_cols].values
+    projected = linearization_result[proj_cols].to_numpy()
 
     # Calculate projection distances
     proj_distances = np.linalg.norm(position - projected, axis=1)
 
     # Calculate linear position jumps
-    linear_pos = linearization_result["linear_position"].values
+    linear_pos = linearization_result["linear_position"].to_numpy()
     linear_jumps = np.abs(np.diff(linear_pos))
 
-    # Calculate segment switches (compare consecutive segment IDs)
-    segment_ids = linearization_result["track_segment_id"].values
-    segment_switches = np.concatenate([[False], segment_ids[1:] != segment_ids[:-1]])
+    # Note: segment switches could be used for more sophisticated outlier detection
+    # segment_ids = linearization_result["track_segment_id"].to_numpy()
 
     # Identify outliers based on projection distance
     dist_threshold = np.mean(proj_distances) + threshold * np.std(proj_distances)
@@ -331,9 +331,7 @@ def validate_linearization(
             f"Low mean confidence: {mean_confidence:.2f} "
             f"({low_confidence_pct:.1f}% of positions have confidence < 0.5)"
         )
-        recommendations.append(
-            "Consider using HMM mode (use_HMM=True) for noisy data"
-        )
+        recommendations.append("Consider using HMM mode (use_HMM=True) for noisy data")
 
     # Detect outliers
     outlier_report = detect_linearization_outliers(
@@ -350,11 +348,13 @@ def validate_linearization(
             recommendations.append(
                 "High outlier rate suggests track structure may not match actual paths"
             )
-            recommendations.append("Verify track graph structure with plot_track_graph()")
+            recommendations.append(
+                "Verify track graph structure with plot_track_graph()"
+            )
 
     # Check for NaN values
-    if linearization_result.isnull().any().any():
-        n_nan = linearization_result.isnull().any(axis=1).sum()
+    if linearization_result.isna().any().any():
+        n_nan = linearization_result.isna().any(axis=1).sum()
         warnings_list.append(f"Found {n_nan} positions with NaN values")
 
     # Calculate quality score
@@ -364,7 +364,7 @@ def validate_linearization(
         1.0 if track_report["valid"] else 0.0,  # Weight: 0.3
     ]
     weights = [0.4, 0.3, 0.3]
-    quality_score = sum(w * c for w, c in zip(weights, quality_components))
+    quality_score = sum(w * c for w, c in zip(weights, quality_components, strict=False))
 
     # Determine pass/fail
     passed = quality_score > 0.7 and len(warnings_list) == 0
@@ -376,9 +376,7 @@ def validate_linearization(
         "outlier_count": outlier_report["n_outliers"],
         "outlier_percentage": outlier_pct,
         "mean_projection_distance": np.mean(outlier_report["projection_distances"]),
-        "median_projection_distance": np.median(
-            outlier_report["projection_distances"]
-        ),
+        "median_projection_distance": np.median(outlier_report["projection_distances"]),
     }
 
     report = {
