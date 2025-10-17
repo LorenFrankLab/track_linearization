@@ -163,9 +163,9 @@ def get_projection_confidence(
         scale = 1.0  # All points on track
 
     # Calculate confidence using Gaussian-like decay
-    confidence = np.exp(-(distances**2) / (2 * scale**2))
+    confidence: np.ndarray = np.exp(-(distances**2) / (2 * scale**2))
 
-    return confidence  # type: ignore[no-any-return]
+    return confidence
 
 
 def detect_linearization_outliers(

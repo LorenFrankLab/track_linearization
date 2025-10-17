@@ -267,7 +267,7 @@ def _plot_linear_segment(
 def plot_graph_as_1D(
     track_graph: nx.Graph,
     edge_order: list[Edge] | None = None,
-    edge_spacing: float | list[float] = 0,
+    edge_spacing: float | Sequence[float] = 0,
     ax: plt.Axes | None = None,
     axis: str = "x",
     other_axis_start: float = 0.0,
@@ -430,7 +430,8 @@ def _get_projected_track_position(
     track_segments = get_track_segments_from_graph(track_graph)
     projected_track_position = project_points_to_segment(track_segments, position)
     n_time = projected_track_position.shape[0]
-    return projected_track_position[(np.arange(n_time), track_segment_id)]  # type: ignore[no-any-return]
+    result: np.ndarray = projected_track_position[(np.arange(n_time), track_segment_id)]
+    return result
 
 
 def make_actual_vs_linearized_position_movie(

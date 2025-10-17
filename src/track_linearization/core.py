@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from math import sqrt
 from typing import Any
 
@@ -187,9 +187,10 @@ def project_points_to_segment(
 
     np.clip(nx_param, 0.0, 1.0, out=nx_param)
 
-    return node1[np.newaxis, ...] + (  # type: ignore[no-any-return]
+    result: np.ndarray = node1[np.newaxis, ...] + (
         nx_param[:, :, np.newaxis] * segment_diff[np.newaxis, ...]
     )
+    return result
 
 
 def find_projected_point_distance(
@@ -209,11 +210,12 @@ def find_projected_point_distance(
     distances : np.ndarray, shape (n_time, n_segments)
         Euclidean distance from each point to its projection on each segment.
     """
-    return np.linalg.norm(  # type: ignore[no-any-return]
+    result: np.ndarray = np.linalg.norm(
         position[:, np.newaxis, :]
         - project_points_to_segment(track_segments, position),
         axis=2,
     )
+    return result
 
 
 def find_nearest_segment(
@@ -235,7 +237,8 @@ def find_nearest_segment(
         Index of the nearest track segment for each time point.
     """
     distance = find_projected_point_distance(track_segments, position)
-    return np.argmin(distance, axis=1)  # type: ignore[no-any-return]
+    result: np.ndarray = np.argmin(distance, axis=1)
+    return result
 
 
 def euclidean_distance_change(position: np.ndarray) -> np.ndarray:
@@ -329,11 +332,11 @@ def route_distance(
     start_node_ind = node_ind[n_original_nodes::2]  # Corresponds to t_0_ nodes
     end_node_ind = node_ind[n_original_nodes + 1 :: 2]  # Corresponds to t_1_ nodes
 
-    dist_matrix_slice = path_distance[start_node_ind][:, end_node_ind]
+    dist_matrix_slice: np.ndarray = path_distance[start_node_ind][:, end_node_ind]
 
     track_graph.remove_nodes_from(node_names)  # Clean up graph
 
-    return dist_matrix_slice  # type: ignore[no-any-return]
+    return dist_matrix_slice
 
 
 def batch(n_samples: int, batch_size: int = 1) -> Iterator[range]:
@@ -462,9 +465,10 @@ def calculate_position_likelihood(
     projected_position_distance = find_projected_point_distance(
         track_segments, position
     )
-    return np.exp(-0.5 * (projected_position_distance / sigma) ** 2) / (  # type: ignore[no-any-return]
+    result: np.ndarray = np.exp(-0.5 * (projected_position_distance / sigma) ** 2) / (
         np.sqrt(2 * np.pi) * sigma
     )
+    return result
 
 
 def normalize_to_probability(x: np.ndarray, axis: int = -1) -> np.ndarray:
@@ -484,7 +488,8 @@ def normalize_to_probability(x: np.ndarray, axis: int = -1) -> np.ndarray:
         If a sum along the axis is 0, the original values in that slice will
         result in NaNs or Infs after division.
     """
-    return x / x.sum(axis=axis, keepdims=True)  # type: ignore[no-any-return]
+    result: np.ndarray = x / x.sum(axis=axis, keepdims=True)
+    return result
 
 
 def calculate_empirical_state_transition(
@@ -785,7 +790,7 @@ def batch_linear_distance(
 
 
 def _normalize_edge_spacing(
-    edge_spacing: float | list[float], n_edges: int
+    edge_spacing: float | Sequence[float], n_edges: int
 ) -> list[float]:
     """Convert edge_spacing to list format with validation.
 
@@ -839,10 +844,10 @@ def _normalize_edge_spacing(
 def _apply_edge_map_to_positions(
     linear_position: np.ndarray,
     track_segment_id: np.ndarray,
-    edge_map: dict[int, int],
+    edge_map: Mapping[int, int | str],
     track_graph: Graph,
     edge_order: list[Edge],
-    edge_spacing: float | list[float],
+    edge_spacing: float | Sequence[float],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Apply edge_map to adjust linear positions and segment IDs.
 
@@ -939,7 +944,7 @@ def _calculate_linear_position(
     position: np.ndarray,
     track_segment_id: np.ndarray,
     edge_order: list[Edge],
-    edge_spacing: float | list[float],
+    edge_spacing: float | Sequence[float],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Determines the linear position given a 2D position and a track graph.
 
@@ -1028,12 +1033,12 @@ def get_linearized_position(
     position: np.ndarray,
     track_graph: Graph,
     edge_order: list[Edge] | None = None,
-    edge_spacing: float | list[float] = 0.0,
+    edge_spacing: float | Sequence[float] = 0.0,
     use_HMM: bool = False,
     route_euclidean_distance_scaling: float = 1.0,
     sensor_std_dev: float = 5.0,
     diagonal_bias: float = 0.1,
-    edge_map: dict[int, int] | None = None,
+    edge_map: Mapping[int, int | str] | None = None,
 ) -> pd.DataFrame:
     """Linearize 2D position based on graph representation of track.
 
@@ -1238,7 +1243,7 @@ def project_1d_to_2d(
     linear_position: np.ndarray,
     track_graph: nx.Graph,
     edge_order: list[Edge],
-    edge_spacing: float | list[float] = 0.0,
+    edge_spacing: float | Sequence[float] = 0.0,
 ) -> np.ndarray:
     """
     Map 1-D linear positions back to 2-D coordinates on the track graph.
@@ -1297,8 +1302,8 @@ def project_1d_to_2d(
     u = np.array([node_pos[edge_order[i][0]] for i in idx])
     v = np.array([node_pos[edge_order[i][1]] for i in idx])
 
-    coords = (1.0 - t[:, None]) * u + t[:, None] * v
+    coords: np.ndarray = (1.0 - t[:, None]) * u + t[:, None] * v
 
     # propagate NaNs from the input
     coords[nan_mask] = np.nan
-    return coords  # type: ignore[no-any-return]
+    return coords
