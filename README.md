@@ -9,9 +9,12 @@
 ## Features
 
 - **Flexible Track Representation**: Define any 2D track structure using NetworkX graphs
+- **Pre-Built Track Geometries**: 8+ track builders for common experimental setups (T-maze, circular, figure-8, etc.)
 - **HMM-Based Classification**: Optional temporal continuity for robust segment classification
 - **Edge Merging**: Treat different spatial paths as equivalent behavioral segments
 - **Automatic Layout Inference**: Smart edge ordering and spacing for intuitive linearization
+- **Interactive Track Builder**: Create tracks from images with mouse clicks (Jupyter-compatible)
+- **Validation & Quality Control**: Confidence scoring, outlier detection, and comprehensive quality assessment
 - **Visualization Tools**: Plot tracks in 2D and linearized 1D representations
 
 ## Installation
@@ -330,7 +333,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Learning Resources
 
-### Tutorial Notebook
+### Tutorial Notebooks
 📚 **[Interactive Tutorial](notebooks/track_linearization_tutorial.ipynb)** - A comprehensive, pedagogically-designed notebook covering:
 - Simple to complex track examples (linear, L-shaped, circular, W-track)
 - Edge mapping for behavioral analysis (T-maze example)
@@ -338,6 +341,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Best practices and troubleshooting tips
 
 Perfect for scientists new to the package or computational spatial analysis!
+
+🔧 **[Advanced Features Tutorial](notebooks/advanced_features_tutorial.ipynb)** - Learn about new features in v2.4+:
+- Pre-built track geometries (T-maze, plus maze, figure-8, etc.)
+- Validation & quality control for linearization
+- Interactive track builder from images (Jupyter-compatible)
+- Outlier detection and confidence scoring
+- Real-world analysis workflows
 
 ## Support
 
