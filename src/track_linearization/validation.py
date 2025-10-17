@@ -226,14 +226,27 @@ def detect_linearization_outliers(
     # segment_ids = linearization_result["track_segment_id"].to_numpy()
 
     # Identify outliers based on projection distance
-    dist_threshold = np.mean(proj_distances) + threshold * np.std(proj_distances)
-    dist_outliers = proj_distances > dist_threshold
+    # Use robust statistics (median + MAD) instead of mean + std
+    median_dist = np.median(proj_distances)
+    mad_dist = np.median(np.abs(proj_distances - median_dist))
+
+    # Only flag distance outliers if there's meaningful variation
+    if mad_dist > 1e-10:
+        dist_threshold = median_dist + threshold * mad_dist * 1.4826  # Scale MAD to std
+        dist_outliers = proj_distances > dist_threshold
+    else:
+        # For very uniform distances, use absolute threshold
+        dist_threshold = median_dist + threshold
+        dist_outliers = proj_distances > dist_threshold
 
     # Identify outliers based on large jumps
-    jump_threshold = np.median(linear_jumps) + threshold * np.median(
-        np.abs(linear_jumps - np.median(linear_jumps))
-    )
-    jump_outliers = np.concatenate([[False], linear_jumps > jump_threshold])
+    mad = np.median(np.abs(linear_jumps - np.median(linear_jumps)))
+    # Avoid detecting outliers when data is too uniform (MAD close to 0)
+    if mad > 1e-10:  # Only detect jump outliers if there's variation
+        jump_threshold = np.median(linear_jumps) + threshold * mad
+        jump_outliers = np.concatenate([[False], linear_jumps > jump_threshold])
+    else:
+        jump_outliers = np.zeros(len(proj_distances), dtype=bool)
 
     # Combine outlier criteria
     outlier_mask = dist_outliers | jump_outliers
