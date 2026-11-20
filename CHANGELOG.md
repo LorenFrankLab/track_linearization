@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `get_linearized_position` works on a track graph whose node labels are tuples, and gives the same result as for the same track with integer labels. It raised `TypeError: unhashable type: 'numpy.ndarray'`: the edges' start nodes were collected in a NumPy array, which turns each tuple label into a row. Results for integer and string labels are unchanged.
+
 ## [2.4.0] - 2025-10-16
 
 ### Added

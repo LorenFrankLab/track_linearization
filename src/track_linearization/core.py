@@ -1009,12 +1009,16 @@ def _calculate_linear_position(
         ]
     )
 
-    track_segment_id_to_edge = {track_graph.edges[e]["edge_id"]: e for e in edge_order}
-    start_node_id = np.asarray(
-        [track_segment_id_to_edge[edge_id][0] for edge_id in track_segment_id]
-    )
+    # Look each start node up by its own label: an array of the labels would
+    # turn a tuple label into a row, which is not a node.
+    track_segment_id_to_start_node = {
+        track_graph.edges[e]["edge_id"]: e[0] for e in edge_order
+    }
     start_node_2D_position = np.asarray(
-        [track_graph.nodes[node]["pos"] for node in start_node_id]
+        [
+            track_graph.nodes[track_segment_id_to_start_node[edge_id]]["pos"]
+            for edge_id in track_segment_id
+        ]
     )
 
     # Handle empty position array edge case
