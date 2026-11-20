@@ -336,6 +336,44 @@ class TestWTrack:
         ), "All positions should be non-null"
 
 
+@pytest.mark.parametrize("use_HMM", [False, True])
+@pytest.mark.parametrize(
+    "relabel",
+    [lambda node: f"node{node}", lambda node: (node, "a")],
+    ids=["strings", "tuples"],
+)
+def test_linearization_does_not_depend_on_node_labels(w_track, relabel, use_HMM):
+    """Node labels are only names: a relabelled track linearizes as before.
+
+    The relabelled graph keeps the node order, edge order and edge ids of the
+    0-based W track, so every output column must be identical.
+    """
+    position = np.random.default_rng(0).uniform(-2.0, 32.0, (200, 2))
+    edge_order = [(4, 5), (5, 1), (1, 2), (5, 0), (0, 3)]
+    edge_spacing = [15, 0, 15, 0]
+    relabelled_track = nx.relabel_nodes(
+        w_track, {node: relabel(node) for node in w_track.nodes}
+    )
+
+    expected = get_linearized_position(
+        position,
+        w_track,
+        edge_order=edge_order,
+        edge_spacing=edge_spacing,
+        use_HMM=use_HMM,
+    )
+    result = get_linearized_position(
+        position,
+        relabelled_track,
+        edge_order=[(relabel(node1), relabel(node2)) for node1, node2 in edge_order],
+        edge_spacing=edge_spacing,
+        use_HMM=use_HMM,
+    )
+
+    assert expected.linear_position.notna().all()
+    pd.testing.assert_frame_equal(result, expected)
+
+
 def test_linearization_without_hmm(simple_rectangular_track):
     """Test linearization without HMM (nearest neighbor mode)."""
     # Create simple position data
